@@ -1,0 +1,29 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ai-health-coach-1558c",
+          "appId": "1:41091466183:android:8f77c44a09965baa288fe2",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "ai-health-coach-1558c",
+          "configurations": {
+            "android": "1:41091466183:android:8f77c44a09965baa288fe2",
+            "ios": "1:41091466183:ios:36bd6d2351ce8009288fe2",
+            "macos": "1:41091466183:ios:36bd6d2351ce8009288fe2",
+            "web": "1:41091466183:web:9bbb2fe30fa856f9288fe2",
+            "windows": "1:41091466183:web:3a6d7ef6a2e6adb5288fe2"
+          }
+        }
+      }
+    }
+  }
+}

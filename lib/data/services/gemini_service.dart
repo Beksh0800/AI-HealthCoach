@@ -14,6 +14,14 @@ import '../models/ai_feedback_models.dart';
 import 'openrouter_service.dart';
 import 'ai_prompts.dart';
 
+typedef ProviderExecutor = Future<String> Function({
+  required String prompt,
+  bool jsonMode,
+  int maxTokens,
+  double temperature,
+  int maxRetries,
+});
+
 /// Service for generating workouts using Gemini AI or OpenRouter fallback
 ///
 /// Uses a unified [_executeWithProvider] method for all AI calls:
@@ -21,10 +29,15 @@ import 'ai_prompts.dart';
 class GeminiService implements IAiService {
   GenerativeModel? _model;
   GenerativeModel? _textModel; // For non-JSON responses
-  final OpenRouterService _openRouter = OpenRouterService();
+  final OpenRouterService _openRouter;
+  final ProviderExecutor? _providerExecutorOverride;
   bool _useOpenRouter = false;
 
-  GeminiService() {
+  GeminiService({
+    OpenRouterService? openRouter,
+    ProviderExecutor? providerExecutorOverride,
+  })  : _openRouter = openRouter ?? OpenRouterService(),
+        _providerExecutorOverride = providerExecutorOverride {
     _initModel();
   }
 
@@ -66,7 +79,8 @@ class GeminiService implements IAiService {
 
   /// Check if any AI provider is configured
   @override
-  bool get isConfigured => _model != null || _openRouter.isConfigured;
+  bool get isConfigured =>
+      _providerExecutorOverride != null || _model != null || _openRouter.isConfigured;
 
   /// Force use of OpenRouter (useful when Gemini quota is exceeded)
   void useOpenRouter() {
@@ -96,6 +110,7 @@ class GeminiService implements IAiService {
     int maxRetries = 1,
   }) async {
     Exception? lastError;
+    Exception? openRouterError;
 
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0) {
@@ -110,7 +125,7 @@ class GeminiService implements IAiService {
           final responseText = await _openRouter.generateCompletionWithFallback(
             prompt: prompt,
             systemPrompt: AiPrompts.systemPrompt,
-            jsonMode: false, // Some free models don't support json_object mode
+            jsonMode: jsonMode,
             maxTokens: maxTokens,
             temperature: temperature,
           );
@@ -120,7 +135,8 @@ class GeminiService implements IAiService {
           }
         } catch (e) {
           debugPrint('GeminiService: OpenRouter failed: $e');
-          lastError = e is Exception ? e : Exception(e.toString());
+          openRouterError = e is Exception ? e : Exception(e.toString());
+          lastError = openRouterError;
         }
       }
 
@@ -141,9 +157,15 @@ class GeminiService implements IAiService {
           debugPrint('GeminiService: Gemini failed: $e');
           final errorStr = e.toString().toLowerCase();
           if (errorStr.contains('quota') || errorStr.contains('exceeded')) {
-            lastError = Exception(
-              'Квота Gemini API исчерпана. Проверьте OpenRouter API key.',
-            );
+            if (openRouterError != null) {
+              lastError = Exception(
+                'Квота Gemini исчерпана, и OpenRouter недоступен: ${openRouterError.toString()}',
+              );
+            } else {
+              lastError = Exception(
+                'Квота Gemini API исчерпана. Проверьте OpenRouter (модели/баланс).',
+              );
+            }
             // Don't retry quota errors
             break;
           }
@@ -154,6 +176,51 @@ class GeminiService implements IAiService {
 
     throw lastError ??
         Exception('AI не настроен. Добавьте OPENROUTER_API_KEY или GEMINI_API_KEY в .env');
+  }
+
+  Future<String> _requestWithProvider({
+    required String prompt,
+    bool jsonMode = false,
+    int maxTokens = 4096,
+    double temperature = 0.7,
+    int maxRetries = 1,
+  }) {
+    if (_providerExecutorOverride != null) {
+      return _providerExecutorOverride(
+        prompt: prompt,
+        jsonMode: jsonMode,
+        maxTokens: maxTokens,
+        temperature: temperature,
+        maxRetries: maxRetries,
+      );
+    }
+    return _executeWithProvider(
+      prompt: prompt,
+      jsonMode: jsonMode,
+      maxTokens: maxTokens,
+      temperature: temperature,
+      maxRetries: maxRetries,
+    );
+  }
+
+  bool _isLikelyParseError(Object error) {
+    if (error is FormatException) return true;
+    final text = error.toString().toLowerCase();
+    return text.contains('formatexception') ||
+        text.contains('ошибка парсинга ответа') ||
+        text.contains('unexpected character') ||
+        text.contains('invalid json');
+  }
+
+  String _buildStrictJsonRetryPrompt(String basePrompt) {
+    return '''
+$basePrompt
+
+ВАЖНО: Верни строго валидный JSON.
+Не используй неэкранированные двойные кавычки внутри строковых значений.
+Если нужны кавычки внутри текста, используй «...» или экранирование \\"...\\".
+Ответ только JSON, без markdown и без пояснений.
+''';
   }
 
   // ---------------------------------------------------------------------------
@@ -231,13 +298,33 @@ class GeminiService implements IAiService {
       targetIntensity: targetIntensity,
     );
 
-    final responseText = await _executeWithProvider(
+    final responseText = await _requestWithProvider(
       prompt: prompt,
       jsonMode: true,
       maxTokens: 4096,
     );
 
-    return parseWorkoutResponse(responseText, profile.uid, checkIn.id, workoutType);
+    try {
+      return parseWorkoutResponse(responseText, profile.uid, checkIn.id, workoutType);
+    } catch (e) {
+      if (!_isLikelyParseError(e)) rethrow;
+      debugPrint('GeminiService: parse failed, retrying once with stricter JSON prompt');
+    }
+
+    final retryResponseText = await _requestWithProvider(
+      prompt: _buildStrictJsonRetryPrompt(prompt),
+      jsonMode: true,
+      maxTokens: 4096,
+      temperature: 0.2,
+      maxRetries: 0,
+    );
+
+    return parseWorkoutResponse(
+      retryResponseText,
+      profile.uid,
+      checkIn.id,
+      workoutType,
+    );
   }
 
   @override
@@ -270,7 +357,7 @@ class GeminiService implements IAiService {
     );
 
     try {
-      final responseText = await _executeWithProvider(
+      final responseText = await _requestWithProvider(
         prompt: prompt,
         jsonMode: true,
         maxTokens: 1024,
@@ -301,7 +388,7 @@ class GeminiService implements IAiService {
     );
 
     try {
-      final responseText = await _executeWithProvider(
+      final responseText = await _requestWithProvider(
         prompt: prompt,
         jsonMode: false,
         maxTokens: 500,
@@ -321,7 +408,7 @@ class GeminiService implements IAiService {
     final prompt = AiPrompts.quickRecommendation(checkIn);
 
     try {
-      final responseText = await _executeWithProvider(
+      final responseText = await _requestWithProvider(
         prompt: prompt,
         jsonMode: false,
         maxTokens: 200,
@@ -362,7 +449,7 @@ class GeminiService implements IAiService {
     );
 
     try {
-      final responseText = await _executeWithProvider(
+      final responseText = await _requestWithProvider(
         prompt: prompt,
         jsonMode: true,
         maxTokens: 2048, // Increased from 1024 to avoid truncated responses
@@ -460,40 +547,129 @@ class GeminiService implements IAiService {
   /// Attempts to repair truncated or malformed JSON
   @visibleForTesting
   String repairJson(String jsonString) {
-    if (jsonString.isEmpty) return '{}';
+    final trimmed = jsonString.trim();
+    if (trimmed.isEmpty) return '{}';
 
-    // If it seems valid (balanced braces), return as is
-    // This is a naive check, but good enough for simple cases
-    int openBraces = '\{'.allMatches(jsonString).length;
-    int closeBraces = '\}'.allMatches(jsonString).length;
-    
-    if (openBraces == closeBraces) return jsonString;
+    var repaired = _escapeInnerQuotesInJsonStrings(trimmed);
 
-    StringBuffer buffer = StringBuffer(jsonString);
-
-    // Close underlying string if needed
-    // Count double quotes that are NOT escaped
-    int quoteCount = 0;
-    for (int i = 0; i < jsonString.length; i++) {
-        // Handle escaped quotes
-        if (i > 0 && jsonString[i] == '"' && jsonString[i-1] == '\\') continue;
-        if (jsonString[i] == '"') quoteCount++;
+    if (_countUnescapedQuotes(repaired).isOdd) {
+      repaired = '$repaired"';
     }
 
-    // If odd number of quotes, close the last one
-    if (quoteCount % 2 != 0) {
-        buffer.write('"');
+    repaired = _appendMissingJsonClosers(repaired);
+    return repaired;
+  }
+
+  String _escapeInnerQuotesInJsonStrings(String input) {
+    final buffer = StringBuffer();
+    var inString = false;
+
+    for (int i = 0; i < input.length; i++) {
+      final ch = input[i];
+
+      if (ch != '"') {
+        buffer.write(ch);
+        continue;
+      }
+
+      if (_isEscapedQuote(input, i)) {
+        buffer.write(ch);
+        continue;
+      }
+
+      if (!inString) {
+        inString = true;
+        buffer.write(ch);
+        continue;
+      }
+
+      final nextChar = _nextSignificantChar(input, i + 1);
+      final isClosingQuote = nextChar == null ||
+          nextChar == ',' ||
+          nextChar == '}' ||
+          nextChar == ']' ||
+          nextChar == ':';
+
+      if (isClosingQuote) {
+        inString = false;
+        buffer.write(ch);
+      } else {
+        buffer.write(r'\"');
+      }
     }
 
-    // Close arrays/objects
-    // We can just append closing braces until it parses or we reach a limit
-    // But for now, let's just close the main object
-    while (openBraces > closeBraces) {
-        buffer.write('}');
-        closeBraces++;
-    }
-    
     return buffer.toString();
+  }
+
+  bool _isEscapedQuote(String input, int quoteIndex) {
+    var backslashCount = 0;
+    var index = quoteIndex - 1;
+    while (index >= 0 && input[index] == '\\') {
+      backslashCount++;
+      index--;
+    }
+    return backslashCount.isOdd;
+  }
+
+  String? _nextSignificantChar(String input, int start) {
+    for (int i = start; i < input.length; i++) {
+      final ch = input[i];
+      if (!RegExp(r'\s').hasMatch(ch)) {
+        return ch;
+      }
+    }
+    return null;
+  }
+
+  int _countUnescapedQuotes(String text) {
+    var count = 0;
+    for (int i = 0; i < text.length; i++) {
+      if (text[i] == '"' && !_isEscapedQuote(text, i)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  String _appendMissingJsonClosers(String text) {
+    final stack = <String>[];
+    var inString = false;
+
+    for (int i = 0; i < text.length; i++) {
+      final ch = text[i];
+      if (ch == '"' && !_isEscapedQuote(text, i)) {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+
+      if (ch == '{' || ch == '[') {
+        stack.add(ch);
+      } else if (ch == '}' && stack.isNotEmpty && stack.last == '{') {
+        stack.removeLast();
+      } else if (ch == ']' && stack.isNotEmpty && stack.last == '[') {
+        stack.removeLast();
+      }
+    }
+
+    if (stack.isEmpty) return text;
+
+    final buffer = StringBuffer(text);
+    for (final opener in stack.reversed) {
+      buffer.write(opener == '{' ? '}' : ']');
+    }
+    return buffer.toString();
+  }
+
+  String _snippetAroundError(String source, int? offset) {
+    if (source.isEmpty) return '';
+    final safeOffset = (offset ?? 0).clamp(0, source.length);
+    final start = (safeOffset - 100).clamp(0, source.length);
+    final end = (safeOffset + 100).clamp(0, source.length);
+    return source
+        .substring(start, end)
+        .replaceAll('\n', r'\n')
+        .replaceAll('\r', r'\r');
   }
 
   @visibleForTesting
@@ -503,8 +679,9 @@ class GeminiService implements IAiService {
     String checkInId,
     String workoutType,
   ) {
+    final cleanedText = cleanJsonResponse(responseText);
+
     try {
-      final cleanedText = cleanJsonResponse(responseText);
       final Map<String, dynamic> data = jsonDecode(cleanedText);
 
       final warmup = (data['warmup'] as List<dynamic>?)
@@ -538,6 +715,16 @@ class GeminiService implements IAiService {
           'generated_at': DateTime.now().toIso8601String(),
           'model': _openRouter.isConfigured ? 'openrouter' : 'gemini',
         },
+      );
+    } on FormatException catch (e, stackTrace) {
+      final snippet = _snippetAroundError(cleanedText, e.offset);
+      debugPrint('_parseWorkoutResponse ERROR: $e');
+      debugPrint('_parseWorkoutResponse snippet: $snippet');
+      debugPrint('StackTrace: $stackTrace');
+      throw FormatException(
+        'Ошибка парсинга ответа: ${e.message}',
+        cleanedText,
+        e.offset,
       );
     } catch (e, stackTrace) {
       debugPrint('_parseWorkoutResponse ERROR: $e');

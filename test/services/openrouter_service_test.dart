@@ -16,26 +16,29 @@ void main() {
 
   group('OpenRouterService', () {
     group('model constants', () {
-      test('has correct free model identifiers', () {
-        expect(OpenRouterService.modelGemma3, 'google/gemma-3-27b-it:free');
-        expect(OpenRouterService.modelDeepSeekR1, 'deepseek/deepseek-r1:free');
-        expect(OpenRouterService.modelLlama33, 'meta-llama/llama-3.3-70b-instruct:free');
-        expect(OpenRouterService.modelQwen3, 'qwen/qwen3-30b-a3b:free');
+      test('has correct default model identifiers', () {
+        expect(OpenRouterService.modelGemma3, 'google/gemini-2.0-flash-001');
+        expect(OpenRouterService.modelDeepSeekR1, 'meta-llama/llama-3.3-70b-instruct');
+        expect(OpenRouterService.modelLlama33, 'meta-llama/llama-3.3-70b-instruct');
+        expect(OpenRouterService.modelQwen3, 'openai/gpt-4o-mini');
         expect(OpenRouterService.modelFreeRouter, 'openrouter/auto');
       });
 
       test('fallbackModels contains all models in correct order', () {
         expect(OpenRouterService.fallbackModels, [
-          OpenRouterService.modelGemma3,
-          OpenRouterService.modelDeepSeekR1,
+          OpenRouterService.modelGpt4oMini,
+          OpenRouterService.modelGeminiFlash,
+          OpenRouterService.modelClaudeHaiku,
           OpenRouterService.modelLlama33,
-          OpenRouterService.modelQwen3,
           OpenRouterService.modelFreeRouter,
         ]);
       });
 
-      test('fallbackModels has Gemma3 as first choice (best for Russian)', () {
-        expect(OpenRouterService.fallbackModels.first, OpenRouterService.modelGemma3);
+      test('fallbackModels has GPT-4o mini as first choice', () {
+        expect(
+          OpenRouterService.fallbackModels.first,
+          OpenRouterService.modelGpt4oMini,
+        );
       });
     });
 

@@ -1,24 +1,23 @@
 import 'package:equatable/equatable.dart';
 
-/// Константы для противопоказаний
 class Contraindications {
   Contraindications._();
 
-  static const String lumbarHernia = 'lumbar_hernia'; // Грыжа поясничного отдела
-  static const String cervicalHernia = 'cervical_hernia'; // Грыжа шейного отдела
-  static const String thoracicHernia = 'thoracic_hernia'; // Грыжа грудного отдела
-  static const String kneeInjury = 'knee_injury'; // Травма колена
-  static const String ankleInjury = 'ankle_injury'; // Травма голеностопа
-  static const String shoulderInjury = 'shoulder_injury'; // Травма плеча
-  static const String wristInjury = 'wrist_injury'; // Травма запястья
-  static const String hipInjury = 'hip_injury'; // Травма тазобедренного сустава
-  static const String scoliosis = 'scoliosis'; // Сколиоз
-  static const String hypertension = 'hypertension'; // Гипертония
-  static const String heartProblems = 'heart_problems'; // Проблемы с сердцем
-  static const String pregnancy = 'pregnancy'; // Беременность
-  static const String obesity = 'obesity'; // Ожирение высокой степени
-  static const String varicose = 'varicose'; // Варикоз
-  static const String osteoporosis = 'osteoporosis'; // Остеопороз
+  static const String lumbarHernia = 'lumbar_hernia';
+  static const String cervicalHernia = 'cervical_hernia';
+  static const String thoracicHernia = 'thoracic_hernia';
+  static const String kneeInjury = 'knee_injury';
+  static const String ankleInjury = 'ankle_injury';
+  static const String shoulderInjury = 'shoulder_injury';
+  static const String wristInjury = 'wrist_injury';
+  static const String hipInjury = 'hip_injury';
+  static const String scoliosis = 'scoliosis';
+  static const String hypertension = 'hypertension';
+  static const String heartProblems = 'heart_problems';
+  static const String pregnancy = 'pregnancy';
+  static const String obesity = 'obesity';
+  static const String varicose = 'varicose';
+  static const String osteoporosis = 'osteoporosis';
 
   static const Map<String, String> labels = {
     lumbarHernia: 'Грыжа поясничного отдела',
@@ -39,7 +38,6 @@ class Contraindications {
   };
 }
 
-/// Константы для целевых групп мышц
 class TargetMuscles {
   TargetMuscles._();
 
@@ -82,11 +80,10 @@ class TargetMuscles {
     triceps: 'Трицепс',
     biceps: 'Бицепс',
     forearms: 'Предплечья',
-    fullBody: 'Всё тело',
+    fullBody: 'Все тело',
   };
 }
 
-/// Константы для оборудования
 class Equipment {
   Equipment._();
 
@@ -111,19 +108,33 @@ class Equipment {
   };
 }
 
-/// Модель упражнения для базы данных
+class ExerciseMediaType {
+  ExerciseMediaType._();
+
+  static const String image = 'image';
+  static const String gif = 'gif';
+  static const String lottie = 'lottie';
+  static const String youtube = 'youtube';
+}
+
 class Exercise extends Equatable {
   final String id;
   final String title;
   final String description;
-  final String difficulty; // beginner, intermediate, advanced
-  final String type; // lfk, stretching, strength, cardio
-  final List<String> targetMuscles; // Целевые мышцы
-  final List<String> contraindications; // Противопоказания
-  final String equipment; // Необходимое оборудование
-  final int estimatedSeconds; // Примерное время выполнения
+  final String difficulty;
+  final String type;
+  final List<String> targetMuscles;
+  final List<String> contraindications;
+  final String equipment;
+  final int estimatedSeconds;
   final String? videoUrl;
   final String? imageUrl;
+  final String mediaType;
+  final String? mediaNeutralUrl;
+  final String? mediaMaleUrl;
+  final String? mediaFemaleUrl;
+  final String? source;
+  final String? license;
 
   const Exercise({
     required this.id,
@@ -137,9 +148,14 @@ class Exercise extends Equatable {
     this.estimatedSeconds = 60,
     this.videoUrl,
     this.imageUrl,
+    this.mediaType = ExerciseMediaType.image,
+    this.mediaNeutralUrl,
+    this.mediaMaleUrl,
+    this.mediaFemaleUrl,
+    this.source,
+    this.license,
   });
 
-  /// Проверить, подходит ли упражнение для пользователя с данными ограничениями
   bool isSafeFor(List<String> userContraindications) {
     for (final contra in userContraindications) {
       if (contraindications.contains(contra)) {
@@ -149,6 +165,26 @@ class Exercise extends Equatable {
     return true;
   }
 
+  String? resolveMediaUrl({String? gender}) {
+    final normalizedGender = gender?.trim().toLowerCase();
+    if (normalizedGender == 'male' && (mediaMaleUrl?.isNotEmpty ?? false)) {
+      return mediaMaleUrl;
+    }
+    if (normalizedGender == 'female' && (mediaFemaleUrl?.isNotEmpty ?? false)) {
+      return mediaFemaleUrl;
+    }
+    if (mediaNeutralUrl?.isNotEmpty ?? false) {
+      return mediaNeutralUrl;
+    }
+    if (imageUrl?.isNotEmpty ?? false) {
+      return imageUrl;
+    }
+    if (videoUrl?.isNotEmpty ?? false) {
+      return videoUrl;
+    }
+    return null;
+  }
+
   factory Exercise.fromMap(Map<String, dynamic> map) {
     return Exercise(
       id: map['id'] ?? '',
@@ -156,12 +192,18 @@ class Exercise extends Equatable {
       description: map['description'] ?? '',
       difficulty: map['difficulty'] ?? 'beginner',
       type: map['type'] ?? 'strength',
-      targetMuscles: List<String>.from(map['target_muscles'] ?? []),
-      contraindications: List<String>.from(map['contraindications'] ?? []),
+      targetMuscles: List<String>.from(map['target_muscles'] ?? const []),
+      contraindications: List<String>.from(map['contraindications'] ?? const []),
       equipment: map['equipment'] ?? Equipment.none,
       estimatedSeconds: map['estimated_seconds']?.toInt() ?? 60,
       videoUrl: map['video_url'],
       imageUrl: map['image_url'],
+      mediaType: map['media_type'] ?? ExerciseMediaType.image,
+      mediaNeutralUrl: map['media_neutral_url'],
+      mediaMaleUrl: map['media_male_url'],
+      mediaFemaleUrl: map['media_female_url'],
+      source: map['source'],
+      license: map['license'],
     );
   }
 
@@ -178,6 +220,12 @@ class Exercise extends Equatable {
       'estimated_seconds': estimatedSeconds,
       'video_url': videoUrl,
       'image_url': imageUrl,
+      'media_type': mediaType,
+      'media_neutral_url': mediaNeutralUrl,
+      'media_male_url': mediaMaleUrl,
+      'media_female_url': mediaFemaleUrl,
+      'source': source,
+      'license': license,
     };
   }
 
@@ -193,6 +241,12 @@ class Exercise extends Equatable {
     int? estimatedSeconds,
     String? videoUrl,
     String? imageUrl,
+    String? mediaType,
+    String? mediaNeutralUrl,
+    String? mediaMaleUrl,
+    String? mediaFemaleUrl,
+    String? source,
+    String? license,
   }) {
     return Exercise(
       id: id ?? this.id,
@@ -206,6 +260,12 @@ class Exercise extends Equatable {
       estimatedSeconds: estimatedSeconds ?? this.estimatedSeconds,
       videoUrl: videoUrl ?? this.videoUrl,
       imageUrl: imageUrl ?? this.imageUrl,
+      mediaType: mediaType ?? this.mediaType,
+      mediaNeutralUrl: mediaNeutralUrl ?? this.mediaNeutralUrl,
+      mediaMaleUrl: mediaMaleUrl ?? this.mediaMaleUrl,
+      mediaFemaleUrl: mediaFemaleUrl ?? this.mediaFemaleUrl,
+      source: source ?? this.source,
+      license: license ?? this.license,
     );
   }
 
@@ -222,5 +282,11 @@ class Exercise extends Equatable {
         estimatedSeconds,
         videoUrl,
         imageUrl,
+        mediaType,
+        mediaNeutralUrl,
+        mediaMaleUrl,
+        mediaFemaleUrl,
+        source,
+        license,
       ];
 }

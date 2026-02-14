@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/models/user_profile_model.dart';
 import '../../../data/models/daily_checkin_model.dart';
+import '../../../data/models/exercise_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../domain/services/i_ai_service.dart';
 import '../../../data/models/ai_feedback_models.dart';
@@ -180,12 +181,18 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         );
       }).toList();
 
-      final workout = await _geminiService.generateWorkout(
+      final generatedWorkout = await _geminiService.generateWorkout(
         profile: profile,
         checkIn: checkIn,
         workoutType: workoutType,
         availableExercises: filteredExercises,
         targetIntensity: targetIntensity,
+      );
+
+      final workout = _applyMediaToWorkout(
+        generatedWorkout,
+        filteredExercises,
+        profile.medicalProfile.gender,
       );
 
       debugPrint('WorkoutCubit: Workout received from GeminiService: ${workout.title}');
@@ -223,6 +230,62 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       debugPrint('WorkoutCubit: Error in generateWorkout: $e');
       emit(WorkoutError('Ошибка генерации: $e'));
     }
+  }
+
+  Workout _applyMediaToWorkout(
+    Workout workout,
+    List<Exercise> libraryExercises,
+    String gender,
+  ) {
+    final warmup = workout.warmup
+        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .toList();
+    final main = workout.mainExercises
+        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .toList();
+    final cooldown = workout.cooldown
+        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .toList();
+
+    return workout.copyWith(
+      warmup: warmup,
+      mainExercises: main,
+      cooldown: cooldown,
+    );
+  }
+
+  WorkoutExercise _enrichExerciseMedia(
+    WorkoutExercise workoutExercise,
+    List<Exercise> libraryExercises,
+    String gender,
+  ) {
+    final normalizedWorkoutName = _normalizeName(workoutExercise.name);
+    final match = libraryExercises.where((exercise) {
+      final normalizedTitle = _normalizeName(exercise.title);
+      return normalizedTitle == normalizedWorkoutName ||
+          normalizedWorkoutName.contains(normalizedTitle) ||
+          normalizedTitle.contains(normalizedWorkoutName);
+    }).toList();
+
+    if (match.isEmpty) {
+      return workoutExercise;
+    }
+
+    final found = match.first;
+    final resolvedUrl = found.resolveMediaUrl(gender: gender);
+
+    return workoutExercise.copyWith(
+      exerciseId: found.id,
+      imageUrl: resolvedUrl ?? workoutExercise.imageUrl,
+      videoUrl: found.videoUrl ?? workoutExercise.videoUrl,
+      mediaType: found.mediaType,
+      source: found.source,
+      license: found.license,
+    );
+  }
+
+  String _normalizeName(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-zа-я0-9]+', caseSensitive: false), ' ').trim();
   }
 
   /// Start the workout

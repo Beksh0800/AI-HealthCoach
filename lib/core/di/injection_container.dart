@@ -70,7 +70,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<IHistoryRepository>(() => sl<HistoryRepository>());
 
   sl.registerLazySingleton<ExerciseRepository>(
-    () => ExerciseRepository(),
+    () => ExerciseRepository(databaseService: sl<DatabaseService>()),
   );
   sl.registerLazySingleton<IExerciseRepository>(() => sl<ExerciseRepository>());
 

@@ -6,6 +6,7 @@ import 'package:ai_health_coach/data/services/gemini_service.dart';
 import 'package:ai_health_coach/data/models/ai_feedback_models.dart';
 import 'package:ai_health_coach/data/models/daily_checkin_model.dart';
 import 'package:ai_health_coach/data/models/exercise_model.dart';
+import 'package:ai_health_coach/data/models/user_profile_model.dart';
 import 'package:ai_health_coach/data/models/workout_model.dart';
 
 void main() {
@@ -33,6 +34,33 @@ void main() {
       sleepQuality: sleepQuality,
       mood: mood,
     );
+  }
+
+  UserProfile makeProfile() {
+    return UserProfile(
+      uid: 'user-1',
+      name: 'Test User',
+      medicalProfile: MedicalProfile(
+        age: 30,
+        weight: 70,
+        activityLevel: 'moderate',
+        injuries: const [],
+      ),
+      goals: 'Уменьшить боль в спине',
+    );
+  }
+
+  List<Exercise> makeExercises() {
+    return const [
+      Exercise(
+        id: 'lfk_cat_cow',
+        title: 'Кошка-Корова',
+        description: 'Мягкая мобилизация позвоночника',
+        difficulty: 'easy',
+        type: 'mobility',
+        targetMuscles: [TargetMuscles.back],
+      ),
+    ];
   }
 
   // ===========================================================================
@@ -121,6 +149,13 @@ void main() {
       // quote count = 3 (1st, 2nd, 3rd is escaped, 4th is missing)
       const input = r'{"key": "val\"ue'; 
       expect(service.repairJson(input), r'{"key": "val\"ue"}');
+    });
+
+    test('repairs unescaped inner quotes in string values', () {
+      const input = '{"name":"Растяжка "Четверка"","sets":1}';
+      final repaired = service.repairJson(input);
+      expect(repaired, contains(r'\"Четверка\"'));
+      expect(() => jsonDecode(repaired), returnsNormally);
     });
   });
 
@@ -347,6 +382,35 @@ void main() {
       expect(workout.estimatedDuration, 30);
     });
 
+    test('repairs and parses unescaped quotes in exercise name', () {
+      const malformedJson = '''
+{
+  "title": "Тестовая тренировка",
+  "estimated_duration": 20,
+  "warmup": [
+    {
+      "name": "Растяжка "Четверка"",
+      "description": "Растяжка ягодичных",
+      "sets": 1,
+      "reps": 10
+    }
+  ],
+  "main_exercises": [],
+  "cooldown": []
+}
+''';
+
+      final workout = service.parseWorkoutResponse(
+        malformedJson,
+        'uid',
+        'cid',
+        WorkoutTypes.lfk,
+      );
+
+      expect(workout.warmup, hasLength(1));
+      expect(workout.warmup.first.name, 'Растяжка "Четверка"');
+    });
+
     test('throws on invalid JSON', () {
       expect(
         () => service.parseWorkoutResponse(
@@ -357,6 +421,75 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
+    });
+  });
+
+  // ===========================================================================
+  // 6. generateWorkout retry flow
+  // ===========================================================================
+  group('generateWorkout retry', () {
+    test('retries once when first response has malformed JSON', () async {
+      var callCount = 0;
+      final validJson = jsonEncode({
+        'title': 'Retry success',
+        'description': 'Valid after retry',
+        'estimated_duration': 25,
+        'warmup': [],
+        'main_exercises': [],
+        'cooldown': [],
+      });
+
+      final retryService = GeminiService(
+        providerExecutorOverride: ({
+          required String prompt,
+          bool jsonMode = false,
+          int maxTokens = 4096,
+          double temperature = 0.7,
+          int maxRetries = 1,
+        }) async {
+          callCount++;
+          return callCount == 1 ? 'not json at all' : validJson;
+        },
+      );
+
+      final workout = await retryService.generateWorkout(
+        profile: makeProfile(),
+        checkIn: makeCheckIn(),
+        workoutType: WorkoutTypes.lfk,
+        availableExercises: makeExercises(),
+      );
+
+      expect(workout.title, 'Retry success');
+      expect(callCount, 2);
+    });
+
+    test('performs only one retry when parse keeps failing', () async {
+      var callCount = 0;
+
+      final retryService = GeminiService(
+        providerExecutorOverride: ({
+          required String prompt,
+          bool jsonMode = false,
+          int maxTokens = 4096,
+          double temperature = 0.7,
+          int maxRetries = 1,
+        }) async {
+          callCount++;
+          return 'still not json';
+        },
+      );
+
+      await expectLater(
+        () => retryService.generateWorkout(
+          profile: makeProfile(),
+          checkIn: makeCheckIn(),
+          workoutType: WorkoutTypes.lfk,
+          availableExercises: makeExercises(),
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(callCount, 2);
     });
   });
 

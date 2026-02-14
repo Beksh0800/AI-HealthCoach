@@ -49,7 +49,7 @@ class _CheckInPageContent extends StatelessWidget {
         listener: (context, state) {
           if (state is CheckInCompleted) {
             // Navigate to workout generation
-            context.push(AppRoutes.workout, extra: initialWorkoutType);
+            context.go(AppRoutes.workout, extra: initialWorkoutType);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -151,7 +151,7 @@ class _CheckInPageContent extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.push(AppRoutes.workout, extra: initialWorkoutType),
+              onPressed: () => context.go(AppRoutes.workout, extra: initialWorkoutType),
               child: const Text('К тренировке'),
             ),
             const SizedBox(height: 12),

@@ -9,6 +9,22 @@ import '../models/workout_model.dart';
 class AiPrompts {
   AiPrompts._();
 
+  static String _sanitizeForJsonPrompt(String value) {
+    if (!value.contains('"')) return value;
+    final buffer = StringBuffer();
+    var useLeftQuote = true;
+    for (final rune in value.runes) {
+      final char = String.fromCharCode(rune);
+      if (char == '"') {
+        buffer.write(useLeftQuote ? '«' : '»');
+        useLeftQuote = !useLeftQuote;
+      } else {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
+
   /// System prompt — defines the AI persona for all interactions
   static const String systemPrompt = '''
 Ты — опытный AI-тренер и специалист по восстановительной медицине (ЛФК). 
@@ -44,12 +60,13 @@ class AiPrompts {
 
     final workoutTypeLabel = WorkoutTypes.labels[workoutType] ?? 'ЛФК';
 
-    final exercisesList = exercises
-        .map((e) =>
-            '- [${e.id}] ${e.title}: ${e.description} | '
-            'Мышцы: ${e.targetMuscles.map((m) => TargetMuscles.labels[m] ?? m).join(", ")} | '
-            'Сложность: ${e.difficulty}')
-        .join('\n');
+    final exercisesList = exercises.map((e) {
+      final safeTitle = _sanitizeForJsonPrompt(e.title);
+      final safeDescription = _sanitizeForJsonPrompt(e.description);
+      return '- [${e.id}] $safeTitle: $safeDescription | '
+          'Мышцы: ${e.targetMuscles.map((m) => TargetMuscles.labels[m] ?? m).join(", ")} | '
+          'Сложность: ${e.difficulty}';
+    }).join('\n');
 
     return '''
 Создай персонализированную тренировку типа "$workoutTypeLabel".
@@ -79,6 +96,7 @@ $exercisesList
 3. Разминка: 3-4 упражнения, Основная часть: 4-6 упражнений, Заминка: 2-3 упражнения
 4. Указывай подходы, повторения или время для каждого упражнения
 5. Добавь doctor_comment с персонализированным советом
+6. В текстовых полях JSON не используй неэкранированные двойные кавычки ("); при необходимости используй «...» или экранирование \\"...\\".
 
 ## ФОРМАТ ОТВЕТА (строго JSON, без markdown):
 {
@@ -120,9 +138,9 @@ $exercisesList
 3. Сложность: ${currentExercise.difficulty} или легче
 
 ДОСТУПНЫЕ УПРАЖНЕНИЯ:
-${safeExercises.map((e) => '- ${e.title}: ${e.description} | Мышцы: ${e.targetMuscles.join(", ")}').join('\n')}
+${safeExercises.map((e) => '- ${_sanitizeForJsonPrompt(e.title)}: ${_sanitizeForJsonPrompt(e.description)} | Мышцы: ${e.targetMuscles.join(", ")}').join('\n')}
 
-Ответь ТОЛЬКО JSON:
+Ответь ТОЛЬКО JSON. Не используй неэкранированные двойные кавычки внутри текстовых значений:
 {
   "name": "Название на русском",
   "description": "Описание",

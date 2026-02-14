@@ -136,7 +136,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _selectedGender,
+                          initialValue: _selectedGender, // Changed from value
                           decoration: const InputDecoration(labelText: 'Пол', border: OutlineInputBorder()),
                           items: const [
                             DropdownMenuItem(value: 'male', child: Text('Мужской')),
@@ -173,7 +173,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         const SizedBox(height: 24),
                         _buildSectionHeader('Цели и Активность'),
                         DropdownButtonFormField<String>(
-                          value: _selectedActivity,
+                          initialValue: _selectedActivity, // Changed from value
                           decoration: const InputDecoration(labelText: 'Уровень активности', border: OutlineInputBorder()),
                           items: const [
                             DropdownMenuItem(value: 'low', child: Text('Низкая (сидячий)')),

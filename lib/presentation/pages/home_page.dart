@@ -21,7 +21,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
   WorkoutStats? _workoutStats;
   List<String> _suggestions = [];
   bool _isLoadingAnalytics = true;
@@ -68,23 +67,8 @@ class _HomePageState extends State<HomePage> {
     return 'Добрый вечер';
   }
 
-  void _onNavTap(int index) {
-    setState(() => _currentIndex = index);
-    switch (index) {
-      case 0:
-        // Already on home
-        break;
-      case 1:
-        context.push(AppRoutes.workout);
-        break;
-      case 2:
-        context.push(AppRoutes.history);
-        break;
-      case 3:
-        context.push(AppRoutes.profile);
-        break;
-    }
-  }
+// Removed: _onNavTap handled by ShellRoute
+
 
   @override
   Widget build(BuildContext context) {
@@ -143,32 +127,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavTap,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Главная',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Тренировка',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_outlined),
-            activeIcon: Icon(Icons.history),
-            label: 'История',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Профиль',
-          ),
-        ],
-      ),
+// Removed: BottomNavigationBar handled by ShellRoute
+
     );
   }
 

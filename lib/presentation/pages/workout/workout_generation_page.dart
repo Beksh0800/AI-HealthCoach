@@ -11,18 +11,21 @@ import '../../blocs/checkin/checkin_cubit.dart';
 
 /// Page for selecting workout type and generating AI workout
 class WorkoutGenerationPage extends StatelessWidget {
-  const WorkoutGenerationPage({super.key});
+  final String? initialWorkoutType; // Add this
+
+  const WorkoutGenerationPage({super.key, this.initialWorkoutType});
 
   @override
   Widget build(BuildContext context) {
     // Use global WorkoutCubit from MultiBlocProvider in main.dart
     // Do NOT create local BlocProvider - it shadows global state!
-    return const _WorkoutGenerationContent();
+    return _WorkoutGenerationContent(initialWorkoutType: initialWorkoutType);
   }
 }
 
 class _WorkoutGenerationContent extends StatefulWidget {
-  const _WorkoutGenerationContent();
+  final String? initialWorkoutType; // Add this
+  const _WorkoutGenerationContent({this.initialWorkoutType});
 
   @override
   State<_WorkoutGenerationContent> createState() => _WorkoutGenerationContentState();
@@ -32,8 +35,15 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
   @override
   void initState() {
     super.initState();
-    // Check for saved session on page load
-    context.read<WorkoutCubit>().checkForActiveSession();
+    // Auto-generate if type is passed
+    if (widget.initialWorkoutType != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _generateWorkout(context, widget.initialWorkoutType!);
+      });
+    } else {
+      // Check for saved session on page load ONLY if not starting a specific new one
+      context.read<WorkoutCubit>().checkForActiveSession();
+    }
   }
 
   @override
@@ -41,10 +51,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Выбор тренировки'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.home),
-        ),
+        // Leading button removed for top-level tab
+
       ),
       body: BlocConsumer<WorkoutCubit, WorkoutState>(
         listener: (context, state) {

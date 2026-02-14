@@ -1,0 +1,35 @@
+[
+  {
+    "id": "lfk_cat_cow",
+    "media_type": "gif",
+    "media_neutral_url": "https://example.com/media/lfk_cat_cow_neutral.gif",
+    "media_male_url": "https://example.com/media/lfk_cat_cow_male.gif",
+    "media_female_url": "https://example.com/media/lfk_cat_cow_female.gif",
+    "source": "ExerciseDB",
+    "license": "RapidAPI plan",
+    "video_url": "",
+    "image_url": "https://example.com/media/lfk_cat_cow_neutral.gif"
+  },
+  {
+    "id": "strength_squats",
+    "media_type": "youtube",
+    "media_neutral_url": "",
+    "media_male_url": "",
+    "media_female_url": "",
+    "source": "YouTube",
+    "license": "Embedded link only",
+    "video_url": "https://www.youtube.com/watch?v=example",
+    "image_url": ""
+  },
+  {
+    "id": "stretch_child_pose",
+    "media_type": "lottie",
+    "media_neutral_url": "https://example.com/lottie/stretch_child_pose.json",
+    "media_male_url": "",
+    "media_female_url": "",
+    "source": "LottieFiles",
+    "license": "Free for personal/commercial use",
+    "video_url": "",
+    "image_url": "https://example.com/preview/stretch_child_pose.png"
+  }
+]

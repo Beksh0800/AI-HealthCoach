@@ -15,6 +15,7 @@ import '../../presentation/pages/workout/workout_player_page.dart';
 import '../../presentation/pages/history/history_page.dart';
 import '../../presentation/pages/profile/profile_page.dart';
 import '../../presentation/pages/settings/settings_page.dart';
+import '../../presentation/widgets/scaffold_with_nav_bar.dart';
 
 /// App routes definition
 class AppRoutes {
@@ -39,7 +40,8 @@ class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: AppRoutes.splash,
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: AppRoutes.home, // Start at home, splash is handled separately or as a route coverage
     debugLogDiagnostics: true,
     observers: [
       sl<AnalyticsService>().getAnalyticsObserver(),
@@ -48,65 +50,122 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.splash,
         name: 'splash',
+
         builder: (context, state) => const SplashPage(),
       ),
       GoRoute(
         path: AppRoutes.login,
         name: 'login',
+
         builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
         path: AppRoutes.register,
         name: 'register',
+
         builder: (context, state) => const RegisterPage(),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
         name: 'onboarding',
+
         builder: (context, state) => const OnboardingPage(),
       ),
-      GoRoute(
-        path: AppRoutes.home,
-        name: 'home',
-        builder: (context, state) => const HomePage(),
+      
+      // Stateful Nested Navigation (Bottom Nav Bar)
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return ScaffoldWithNavBar(navigationShell: navigationShell);
+        },
+        branches: [
+          // Branch 1: Home
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                name: 'home',
+                builder: (context, state) => const HomePage(),
+              ),
+            ],
+          ),
+          
+          // Branch 2: Workout Generation
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.workout,
+                name: 'workout',
+                builder: (context, state) {
+                  final type = state.extra as String?;
+                  return WorkoutGenerationPage(initialWorkoutType: type);
+                },
+              ),
+            ],
+          ),
+          
+          // Branch 3: History
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.history,
+                name: 'history',
+                builder: (context, state) => const HistoryPage(),
+              ),
+            ],
+          ),
+          
+          // Branch 4: Profile
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.profile,
+                name: 'profile',
+                builder: (context, state) => const ProfilePage(),
+              ),
+            ],
+          ),
+        ],
       ),
+
+      // Routes that should hide the bottom nav bar (push on top of root navigator)
       GoRoute(
         path: AppRoutes.checkIn,
         name: 'checkIn',
-        builder: (context, state) {
+
+        pageBuilder: (context, state) {
           final type = state.extra as String?;
-          return CheckInPage(initialWorkoutType: type);
+          return MaterialPage(
+            key: state.pageKey,
+            child: CheckInPage(initialWorkoutType: type),
+          );
         },
-      ),
-      GoRoute(
-        path: AppRoutes.workout,
-        name: 'workout',
-        builder: (context, state) => const WorkoutGenerationPage(),
       ),
       GoRoute(
         path: AppRoutes.workoutPreview,
         name: 'workoutPreview',
-        builder: (context, state) => const WorkoutPreviewPage(),
+
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const WorkoutPreviewPage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.workoutPlayer,
         name: 'workoutPlayer',
-        builder: (context, state) => const WorkoutPlayerPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.history,
-        name: 'history',
-        builder: (context, state) => const HistoryPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.profile,
-        name: 'profile',
-        builder: (context, state) => const ProfilePage(),
+
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const WorkoutPlayerPage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.settings,
         name: 'settings',
-        builder: (context, state) => const SettingsPage(),
+
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const SettingsPage(),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -136,3 +195,6 @@ class AppRouter {
     ),
   );
 }
+
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+

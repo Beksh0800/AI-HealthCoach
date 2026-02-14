@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -61,7 +61,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка: пользователь не авторизован')),
+        const SnackBar(content: Text('РћС€РёР±РєР°: РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ Р°РІС‚РѕСЂРёР·РѕРІР°РЅ')),
       );
       return;
     }
@@ -78,7 +78,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       // Create user profile
       final profile = UserProfile(
         uid: authState.uid,
-        name: _name.isEmpty ? 'Пользователь' : _name,
+        name: _name.isEmpty ? 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ' : _name,
         email: authState.email,
         medicalProfile: MedicalProfile(
           age: _age,
@@ -102,7 +102,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка сохранения: $e')),
+          SnackBar(content: Text('РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: $e')),
         );
       }
     } finally {
@@ -165,7 +165,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _isSaving ? null : _previousPage,
-                        child: const Text('Назад'),
+                        child: const Text('РќР°Р·Р°Рґ'),
                       ),
                     ),
                   if (_currentPage > 0) const SizedBox(width: 16),
@@ -181,7 +181,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(_currentPage == 3 ? 'Завершить' : 'Далее'),
+                          : Text(_currentPage == 3 ? 'Р—Р°РІРµСЂС€РёС‚СЊ' : 'Р”Р°Р»РµРµ'),
                     ),
                   ),
                 ],
@@ -194,45 +194,51 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildWelcomePage() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: const Icon(
-              Icons.health_and_safety,
-              size: 64,
-              color: AppColors.primary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Icon(
+                    Icons.health_and_safety,
+                    size: 64,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Добро пожаловать!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Давайте создадим твой персональный профиль здоровья, чтобы тренировки были безопасными и эффективными.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 32),
-          const Text(
-            'Добро пожаловать!',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Давайте создадим твой персональный профиль здоровья, '
-            'чтобы тренировки были безопасными и эффективными.',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -243,7 +249,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Расскажи о себе',
+            'Р Р°СЃСЃРєР°Р¶Рё Рѕ СЃРµР±Рµ',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -254,7 +260,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           // Name
           TextField(
             decoration: const InputDecoration(
-              labelText: 'Имя',
+              labelText: 'РРјСЏ',
               prefixIcon: Icon(Icons.person_outline),
             ),
             onChanged: (value) => _name = value,
@@ -263,7 +269,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Age
           Text(
-            'Возраст: $_age лет',
+            'Р’РѕР·СЂР°СЃС‚: $_age Р»РµС‚',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -271,7 +277,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 16,
             max: 80,
             divisions: 64,
-            label: '$_age лет',
+            label: '$_age Р»РµС‚',
             onChanged: (value) {
               setState(() => _age = value.round());
             },
@@ -280,7 +286,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Weight
           Text(
-            'Вес: ${_weight.toStringAsFixed(1)} кг',
+            'Р’РµСЃ: ${_weight.toStringAsFixed(1)} РєРі',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -288,7 +294,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 40,
             max: 150,
             divisions: 110,
-            label: '${_weight.toStringAsFixed(1)} кг',
+            label: '${_weight.toStringAsFixed(1)} РєРі',
             onChanged: (value) {
               setState(() => _weight = value);
             },
@@ -297,7 +303,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Activity level
           const Text(
-            'Уровень активности',
+            'РЈСЂРѕРІРµРЅСЊ Р°РєС‚РёРІРЅРѕСЃС‚Рё',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
@@ -329,7 +335,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Проблемы со здоровьем',
+            'РџСЂРѕР±Р»РµРјС‹ СЃРѕ Р·РґРѕСЂРѕРІСЊРµРј',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -337,8 +343,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Выбери всё, что к тебе относится. '
-            'Это поможет исключить опасные упражнения.',
+            'Р’С‹Р±РµСЂРё РІСЃС‘, С‡С‚Рѕ Рє С‚РµР±Рµ РѕС‚РЅРѕСЃРёС‚СЃСЏ. '
+            'Р­С‚Рѕ РїРѕРјРѕР¶РµС‚ РёСЃРєР»СЋС‡РёС‚СЊ РѕРїР°СЃРЅС‹Рµ СѓРїСЂР°Р¶РЅРµРЅРёСЏ.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -384,7 +390,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Если у тебя нет проблем со здоровьем, просто нажми "Далее"',
+                    'Р•СЃР»Рё Сѓ С‚РµР±СЏ РЅРµС‚ РїСЂРѕР±Р»РµРј СЃРѕ Р·РґРѕСЂРѕРІСЊРµРј, РїСЂРѕСЃС‚Рѕ РЅР°Р¶РјРё "Р”Р°Р»РµРµ"',
                     style: TextStyle(color: AppColors.info),
                   ),
                 ),
@@ -398,11 +404,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Widget _buildGoalsPage() {
     final goals = [
-      'Избавиться от болей в спине',
-      'Укрепить мышечный корсет',
-      'Восстановиться после травмы',
-      'Улучшить гибкость',
-      'Поддержать общий тонус',
+      'РР·Р±Р°РІРёС‚СЊСЃСЏ РѕС‚ Р±РѕР»РµР№ РІ СЃРїРёРЅРµ',
+      'РЈРєСЂРµРїРёС‚СЊ РјС‹С€РµС‡РЅС‹Р№ РєРѕСЂСЃРµС‚',
+      'Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊСЃСЏ РїРѕСЃР»Рµ С‚СЂР°РІРјС‹',
+      'РЈР»СѓС‡С€РёС‚СЊ РіРёР±РєРѕСЃС‚СЊ',
+      'РџРѕРґРґРµСЂР¶Р°С‚СЊ РѕР±С‰РёР№ С‚РѕРЅСѓСЃ',
     ];
 
     return SingleChildScrollView(
@@ -411,7 +417,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Твоя цель',
+            'РўРІРѕСЏ С†РµР»СЊ',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -419,7 +425,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Что для тебя сейчас важнее всего?',
+            'Р§С‚Рѕ РґР»СЏ С‚РµР±СЏ СЃРµР№С‡Р°СЃ РІР°Р¶РЅРµРµ РІСЃРµРіРѕ?',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,

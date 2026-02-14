@@ -130,7 +130,7 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(fontSize: 13),
             ),
             value: _reminderEnabled,
-            activeColor: AppColors.primary,
+            activeTrackColor: AppColors.primary,
             onChanged: (value) async {
               setState(() => _reminderEnabled = value);
               await _notificationService.setEnabled(value);

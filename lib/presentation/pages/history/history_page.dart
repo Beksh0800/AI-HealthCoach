@@ -1,11 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/di/injection_container.dart';
-import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/workout_history_model.dart';
 import '../../blocs/history/history_cubit.dart';
@@ -50,10 +48,8 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
     return Scaffold(
       appBar: AppBar(
         title: const Text('История и Прогресс'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.home),
-        ),
+        // Leading button removed for top-level tab
+
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/exercise_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../data/models/recovery_plan_model.dart';
 import '../../../data/models/ai_feedback_models.dart';
@@ -284,7 +286,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Exercise image or icon
-                  _buildExerciseImage(exercise),
+                  _buildExerciseImage(context, exercise),
                   const SizedBox(height: 24),
 
                   Text(
@@ -325,6 +327,14 @@ class WorkoutPlayerPage extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  if (_hasVideoContent(exercise)) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => _openExerciseVideo(context, exercise.videoUrl!),
+                      icon: const Icon(Icons.play_circle_outline),
+                      label: const Text('Смотреть видео'),
+                    ),
+                  ],
                   const SizedBox(height: 24),
 
                   // Instructions
@@ -366,16 +376,23 @@ class WorkoutPlayerPage extends StatelessWidget {
           // Pain button
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: ElevatedButton.icon(
               onPressed: () => context.read<WorkoutCubit>().reportPain(),
-              icon: const Icon(Icons.warning_amber, color: AppColors.error),
+              icon: const Icon(Icons.warning_amber, color: Colors.white),
               label: const Text(
-                'Мне больно',
-                style: TextStyle(color: AppColors.error),
+                'МНЕ БОЛЬНО',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.error),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 4,
+                shadowColor: AppColors.error.withValues(alpha: 0.4),
               ),
             ),
           ),
@@ -1077,13 +1094,17 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildExerciseImage(WorkoutExercise exercise) {
-    // If imageUrl is available, show the image
-    if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) {
+  Widget _buildExerciseImage(BuildContext context, WorkoutExercise exercise) {
+    if (_hasVideoContent(exercise)) {
+      return _buildVideoPreview(context, exercise);
+    }
+
+    final imageUrl = exercise.imageUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Image.network(
-          exercise.imageUrl!,
+          imageUrl,
           width: 200,
           height: 150,
           fit: BoxFit.cover,
@@ -1112,9 +1133,140 @@ class WorkoutPlayerPage extends StatelessWidget {
         ),
       );
     }
-    
+
+    if (exercise.mediaType == ExerciseMediaType.lottie) {
+      return _buildMediaPlaceholder(
+        icon: Icons.animation,
+        label: 'Анимация',
+        color: Colors.teal,
+      );
+    }
+
     // Show categorized placeholder
     return _buildPlaceholderImage(exercise);
+  }
+
+  Widget _buildVideoPreview(BuildContext context, WorkoutExercise exercise) {
+    final thumbnail = _resolveVideoThumbnail(exercise);
+    if (thumbnail != null && thumbnail.isNotEmpty) {
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(
+              thumbnail,
+              width: 220,
+              height: 150,
+              fit: BoxFit.cover,
+              errorBuilder: (_, error, stackTrace) => _buildMediaPlaceholder(
+                icon: Icons.play_circle_fill,
+                label: 'Видео',
+                color: Colors.redAccent,
+              ),
+            ),
+          ),
+          IconButton.filled(
+            onPressed: () => _openExerciseVideo(context, exercise.videoUrl!),
+            icon: const Icon(Icons.play_arrow),
+            iconSize: 36,
+          ),
+        ],
+      );
+    }
+
+    return _buildMediaPlaceholder(
+      icon: Icons.play_circle_fill,
+      label: 'Видео',
+      color: Colors.redAccent,
+    );
+  }
+
+  bool _hasVideoContent(WorkoutExercise exercise) {
+    return exercise.videoUrl != null &&
+        exercise.videoUrl!.isNotEmpty &&
+        (exercise.mediaType == ExerciseMediaType.youtube ||
+            exercise.videoUrl!.contains('youtube.com') ||
+            exercise.videoUrl!.contains('youtu.be'));
+  }
+
+  String? _resolveVideoThumbnail(WorkoutExercise exercise) {
+    final videoUrl = exercise.videoUrl;
+    if (videoUrl == null || videoUrl.isEmpty) return exercise.imageUrl;
+
+    final uri = Uri.tryParse(videoUrl);
+    if (uri == null) return exercise.imageUrl;
+
+    if (uri.host.contains('youtu.be')) {
+      final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+      if (id != null && id.isNotEmpty) {
+        return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      }
+    }
+
+    if (uri.host.contains('youtube.com')) {
+      final id = uri.queryParameters['v'];
+      if (id != null && id.isNotEmpty) {
+        return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      }
+    }
+
+    return exercise.imageUrl;
+  }
+
+  Future<void> _openExerciseVideo(BuildContext context, String videoUrl) async {
+    final uri = Uri.tryParse(videoUrl);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Некорректная ссылка на видео')),
+      );
+      return;
+    }
+
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть видео')),
+      );
+    }
+  }
+
+  Widget _buildMediaPlaceholder({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      width: 160,
+      height: 160,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.25),
+            color.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(80),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 3),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: color),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPlaceholderImage(WorkoutExercise exercise) {

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'exercise_model.dart';
 
 /// Model for a single exercise in a workout
 /// Model for a single exercise in a workout
 class WorkoutExercise {
+  final String? exerciseId;
   final String name;
   final String description;
   final int sets;
@@ -10,12 +12,17 @@ class WorkoutExercise {
   final int durationSeconds; // For timed exercises
   final int restSeconds;
   final String? imageUrl;
+  final String? videoUrl;
+  final String mediaType;
+  final String? source;
+  final String? license;
   final List<String> instructions;
   final String difficulty; // easy, medium, hard
   final List<String> targetMuscles;
   final List<String> contraindications;
 
   WorkoutExercise({
+    this.exerciseId,
     required this.name,
     required this.description,
     this.sets = 1,
@@ -23,6 +30,10 @@ class WorkoutExercise {
     this.durationSeconds = 0,
     this.restSeconds = 30,
     this.imageUrl,
+    this.videoUrl,
+    this.mediaType = ExerciseMediaType.image,
+    this.source,
+    this.license,
     this.instructions = const [],
     this.difficulty = 'medium',
     this.targetMuscles = const [],
@@ -40,8 +51,47 @@ class WorkoutExercise {
     return '$sets x $reps';
   }
 
+  WorkoutExercise copyWith({
+    String? exerciseId,
+    String? name,
+    String? description,
+    int? sets,
+    int? reps,
+    int? durationSeconds,
+    int? restSeconds,
+    String? imageUrl,
+    String? videoUrl,
+    String? mediaType,
+    String? source,
+    String? license,
+    List<String>? instructions,
+    String? difficulty,
+    List<String>? targetMuscles,
+    List<String>? contraindications,
+  }) {
+    return WorkoutExercise(
+      exerciseId: exerciseId ?? this.exerciseId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      sets: sets ?? this.sets,
+      reps: reps ?? this.reps,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      restSeconds: restSeconds ?? this.restSeconds,
+      imageUrl: imageUrl ?? this.imageUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
+      mediaType: mediaType ?? this.mediaType,
+      source: source ?? this.source,
+      license: license ?? this.license,
+      instructions: instructions ?? this.instructions,
+      difficulty: difficulty ?? this.difficulty,
+      targetMuscles: targetMuscles ?? this.targetMuscles,
+      contraindications: contraindications ?? this.contraindications,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
+      'exercise_id': exerciseId,
       'name': name,
       'description': description,
       'sets': sets,
@@ -49,6 +99,10 @@ class WorkoutExercise {
       'duration_seconds': durationSeconds,
       'rest_seconds': restSeconds,
       'image_url': imageUrl,
+      'video_url': videoUrl,
+      'media_type': mediaType,
+      'source': source,
+      'license': license,
       'instructions': instructions,
       'difficulty': difficulty,
       'target_muscles': targetMuscles,
@@ -58,6 +112,7 @@ class WorkoutExercise {
 
   factory WorkoutExercise.fromMap(Map<String, dynamic> map) {
     return WorkoutExercise(
+      exerciseId: map['exercise_id'],
       name: map['name'] ?? '',
       description: map['description'] ?? '',
       sets: map['sets']?.toInt() ?? 1,
@@ -65,6 +120,10 @@ class WorkoutExercise {
       durationSeconds: map['duration_seconds']?.toInt() ?? 0,
       restSeconds: map['rest_seconds']?.toInt() ?? 30,
       imageUrl: map['image_url'],
+      videoUrl: map['video_url'],
+      mediaType: map['media_type'] ?? ExerciseMediaType.image,
+      source: map['source'],
+      license: map['license'],
       instructions: List<String>.from(map['instructions'] ?? []),
       difficulty: map['difficulty'] ?? 'medium',
       targetMuscles: List<String>.from(map['target_muscles'] ?? []),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/exercise_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../blocs/workout/workout_cubit.dart';
 
@@ -223,15 +224,7 @@ class WorkoutPreviewPage extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.fitness_center, color: AppColors.primary),
-        ),
+        leading: _buildLeadingVisual(exercise),
         title: Text(
           exercise.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -240,10 +233,70 @@ class WorkoutPreviewPage extends StatelessWidget {
           exercise.displayFormat,
           style: TextStyle(color: AppColors.textSecondary),
         ),
-        trailing: exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty
-            ? const Icon(Icons.image, color: AppColors.primary)
-            : null,
+        trailing: _buildMediaIcon(exercise),
       ),
     );
+  }
+
+  Widget _buildLeadingVisual(WorkoutExercise exercise) {
+    final thumb = _resolveThumbnail(exercise);
+    if (thumb != null && thumb.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          thumb,
+          width: 50,
+          height: 50,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stackTrace) => _fallbackLeadingIcon(),
+        ),
+      );
+    }
+    return _fallbackLeadingIcon();
+  }
+
+  Widget _fallbackLeadingIcon() {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.fitness_center, color: AppColors.primary),
+    );
+  }
+
+  String? _resolveThumbnail(WorkoutExercise exercise) {
+    final videoUrl = exercise.videoUrl ?? '';
+    if (videoUrl.contains('youtu.be') || videoUrl.contains('youtube.com')) {
+      final uri = Uri.tryParse(videoUrl);
+      if (uri != null) {
+        if (uri.host.contains('youtu.be') && uri.pathSegments.isNotEmpty) {
+          return 'https://img.youtube.com/vi/${uri.pathSegments.first}/mqdefault.jpg';
+        }
+        if (uri.host.contains('youtube.com')) {
+          final id = uri.queryParameters['v'];
+          if (id != null && id.isNotEmpty) {
+            return 'https://img.youtube.com/vi/$id/mqdefault.jpg';
+          }
+        }
+      }
+    }
+    return exercise.imageUrl;
+  }
+
+  Widget? _buildMediaIcon(WorkoutExercise exercise) {
+    if (exercise.mediaType == ExerciseMediaType.youtube ||
+        (exercise.videoUrl?.isNotEmpty ?? false)) {
+      return const Icon(Icons.play_circle, color: AppColors.primary);
+    }
+    if (exercise.mediaType == ExerciseMediaType.lottie) {
+      return const Icon(Icons.animation, color: AppColors.primary);
+    }
+    if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) {
+      return const Icon(Icons.image, color: AppColors.primary);
+    }
+    return null;
   }
 }

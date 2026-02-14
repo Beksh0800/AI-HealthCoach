@@ -95,6 +95,7 @@ class WorkoutCacheService {
 
   Map<String, dynamic> _exerciseToJson(WorkoutExercise ex) {
     return {
+      'exercise_id': ex.exerciseId,
       'name': ex.name,
       'description': ex.description,
       'sets': ex.sets,
@@ -102,6 +103,10 @@ class WorkoutCacheService {
       'duration_seconds': ex.durationSeconds,
       'rest_seconds': ex.restSeconds,
       'image_url': ex.imageUrl,
+      'video_url': ex.videoUrl,
+      'media_type': ex.mediaType,
+      'source': ex.source,
+      'license': ex.license,
       'instructions': ex.instructions,
       'difficulty': ex.difficulty,
       'target_muscles': ex.targetMuscles,

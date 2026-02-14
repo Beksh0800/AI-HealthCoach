@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 
@@ -24,10 +25,18 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    tz_data.initializeTimeZones();
+    await _configureTimezone();
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
 
     await _plugin.initialize(settings: initSettings);
     _initialized = true;
@@ -68,14 +77,21 @@ class NotificationService {
   }
 
   /// Enable/disable reminders.
-  Future<void> setEnabled(bool enabled) async {
+  Future<bool> setEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefEnabled, enabled);
     if (enabled) {
+      final granted = await ensurePermissions();
+      if (!granted) {
+        await prefs.setBool(_prefEnabled, false);
+        return false;
+      }
+      await prefs.setBool(_prefEnabled, true);
       await _scheduleFromPrefs(prefs);
     } else {
+      await prefs.setBool(_prefEnabled, false);
       await cancelAll();
     }
+    return true;
   }
 
   /// Set the reminder time.
@@ -106,6 +122,12 @@ class NotificationService {
   // ── Private helpers ─────────────────────────────
 
   Future<void> _scheduleFromPrefs(SharedPreferences prefs) async {
+    final granted = await ensurePermissions();
+    if (!granted) {
+      debugPrint('NotificationService: permission denied, skipping schedule');
+      return;
+    }
+
     final h = prefs.getInt(_prefHour) ?? 9;
     final m = prefs.getInt(_prefMinute) ?? 0;
     final rawDays = prefs.getString(_prefDays);
@@ -155,6 +177,64 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint('NotificationService: error scheduling for weekday $weekday: $e');
+    }
+  }
+
+  Future<bool> ensurePermissions() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android != null) {
+      final notificationsGranted =
+          await android.requestNotificationsPermission() ?? false;
+      if (!notificationsGranted) {
+        debugPrint('NotificationService: notifications permission denied');
+        return false;
+      }
+
+      final canScheduleExact = await android.canScheduleExactNotifications();
+      if (canScheduleExact == false) {
+        await android.requestExactAlarmsPermission();
+      }
+      return true;
+    }
+
+    final ios = _plugin.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    if (ios != null) {
+      return await ios.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          ) ??
+          false;
+    }
+
+    final mac = _plugin.resolvePlatformSpecificImplementation<
+        MacOSFlutterLocalNotificationsPlugin>();
+    if (mac != null) {
+      return await mac.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          ) ??
+          false;
+    }
+
+    return true;
+  }
+
+  Future<void> _configureTimezone() async {
+    tz_data.initializeTimeZones();
+    try {
+      final timezoneName = await FlutterTimezone.getLocalTimezone();
+      final location = tz.getLocation(timezoneName);
+      tz.setLocalLocation(location);
+      debugPrint('NotificationService: local timezone set to $timezoneName');
+    } catch (e) {
+      debugPrint(
+        'NotificationService: failed to resolve local timezone, fallback to UTC: $e',
+      );
+      tz.setLocalLocation(tz.getLocation('UTC'));
     }
   }
 }

@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/exercise_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../blocs/workout/workout_cubit.dart';
+import '../../widgets/video/exercise_video_resolver.dart';
 
 /// Page to preview the generated workout before starting
 class WorkoutPreviewPage extends StatelessWidget {
@@ -268,28 +269,33 @@ class WorkoutPreviewPage extends StatelessWidget {
   }
 
   String? _resolveThumbnail(WorkoutExercise exercise) {
-    final videoUrl = exercise.videoUrl ?? '';
-    if (videoUrl.contains('youtu.be') || videoUrl.contains('youtube.com')) {
-      final uri = Uri.tryParse(videoUrl);
-      if (uri != null) {
-        if (uri.host.contains('youtu.be') && uri.pathSegments.isNotEmpty) {
-          return 'https://img.youtube.com/vi/${uri.pathSegments.first}/mqdefault.jpg';
-        }
-        if (uri.host.contains('youtube.com')) {
-          final id = uri.queryParameters['v'];
-          if (id != null && id.isNotEmpty) {
-            return 'https://img.youtube.com/vi/$id/mqdefault.jpg';
-          }
-        }
+    final resolved = ExerciseVideoResolver.resolve(
+      exercise.videoUrl,
+      exercise.mediaType,
+    );
+    if (resolved.kind == ExerciseVideoKind.youtubeVideo) {
+      final thumbnail = ExerciseVideoResolver.youtubeThumbnailById(
+        resolved.youtubeId,
+        mediumQuality: true,
+      );
+      if (thumbnail != null && thumbnail.isNotEmpty) {
+        return thumbnail;
       }
     }
     return exercise.imageUrl;
   }
 
   Widget? _buildMediaIcon(WorkoutExercise exercise) {
-    if (exercise.mediaType == ExerciseMediaType.youtube ||
-        (exercise.videoUrl?.isNotEmpty ?? false)) {
+    final resolved = ExerciseVideoResolver.resolve(
+      exercise.videoUrl,
+      exercise.mediaType,
+    );
+    if (resolved.kind == ExerciseVideoKind.youtubeVideo ||
+        resolved.kind == ExerciseVideoKind.networkVideo) {
       return const Icon(Icons.play_circle, color: AppColors.primary);
+    }
+    if (resolved.kind == ExerciseVideoKind.youtubeSearch) {
+      return const Icon(Icons.travel_explore, color: AppColors.primary);
     }
     if (exercise.mediaType == ExerciseMediaType.lottie) {
       return const Icon(Icons.animation, color: AppColors.primary);

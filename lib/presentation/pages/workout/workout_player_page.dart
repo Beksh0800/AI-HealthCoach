@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -10,6 +9,10 @@ import '../../../data/models/workout_model.dart';
 import '../../../data/models/recovery_plan_model.dart';
 import '../../../data/models/ai_feedback_models.dart';
 import '../../blocs/workout/workout_cubit.dart';
+import '../../widgets/video/exercise_video_player.dart';
+import '../../widgets/video/exercise_video_resolver.dart';
+import 'exercise_search_webview_page.dart';
+import 'exercise_video_fullscreen_page.dart';
 
 /// Page for playing/executing a workout
 class WorkoutPlayerPage extends StatelessWidget {
@@ -275,6 +278,8 @@ class WorkoutPlayerPage extends StatelessWidget {
     WorkoutInProgress state,
     WorkoutExercise exercise,
   ) {
+    final resolvedVideo = _resolveExerciseVideo(exercise);
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -327,12 +332,24 @@ class WorkoutPlayerPage extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  if (_hasVideoContent(exercise)) ...[
+                  if (resolvedVideo.kind != ExerciseVideoKind.unsupported) ...[
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () => _openExerciseVideo(context, exercise.videoUrl!),
-                      icon: const Icon(Icons.play_circle_outline),
-                      label: const Text('Смотреть видео'),
+                      onPressed: () => _openVideoByKind(
+                        context,
+                        exercise,
+                        resolvedVideo,
+                      ),
+                      icon: Icon(
+                        resolvedVideo.kind == ExerciseVideoKind.youtubeSearch
+                            ? Icons.travel_explore
+                            : Icons.play_circle_outline,
+                      ),
+                      label: Text(
+                        resolvedVideo.kind == ExerciseVideoKind.youtubeSearch
+                            ? 'Открыть поиск'
+                            : 'Смотреть видео',
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -1095,8 +1112,27 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   Widget _buildExerciseImage(BuildContext context, WorkoutExercise exercise) {
-    if (_hasVideoContent(exercise)) {
-      return _buildVideoPreview(context, exercise);
+    final resolvedVideo = _resolveExerciseVideo(exercise);
+    if (resolvedVideo.kind != ExerciseVideoKind.unsupported) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 240,
+          child: ExerciseVideoPlayer(
+            resolvedVideo: resolvedVideo,
+            onFullscreenTap: () => _openFullscreenVideo(
+              context,
+              exercise.name,
+              resolvedVideo,
+            ),
+            onOpenSearchTap: () => _openSearchVideo(
+              context,
+              exercise.name,
+              resolvedVideo,
+            ),
+          ),
+        ),
+      );
     }
 
     final imageUrl = exercise.imageUrl;
@@ -1146,89 +1182,61 @@ class WorkoutPlayerPage extends StatelessWidget {
     return _buildPlaceholderImage(exercise);
   }
 
-  Widget _buildVideoPreview(BuildContext context, WorkoutExercise exercise) {
-    final thumbnail = _resolveVideoThumbnail(exercise);
-    if (thumbnail != null && thumbnail.isNotEmpty) {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              thumbnail,
-              width: 220,
-              height: 150,
-              fit: BoxFit.cover,
-              errorBuilder: (_, error, stackTrace) => _buildMediaPlaceholder(
-                icon: Icons.play_circle_fill,
-                label: 'Видео',
-                color: Colors.redAccent,
-              ),
-            ),
-          ),
-          IconButton.filled(
-            onPressed: () => _openExerciseVideo(context, exercise.videoUrl!),
-            icon: const Icon(Icons.play_arrow),
-            iconSize: 36,
-          ),
-        ],
-      );
-    }
+  ResolvedExerciseVideo _resolveExerciseVideo(WorkoutExercise exercise) {
+    return ExerciseVideoResolver.resolve(exercise.videoUrl, exercise.mediaType);
+  }
 
-    return _buildMediaPlaceholder(
-      icon: Icons.play_circle_fill,
-      label: 'Видео',
-      color: Colors.redAccent,
+  void _openVideoByKind(
+    BuildContext context,
+    WorkoutExercise exercise,
+    ResolvedExerciseVideo resolvedVideo,
+  ) {
+    if (resolvedVideo.kind == ExerciseVideoKind.youtubeSearch) {
+      _openSearchVideo(context, exercise.name, resolvedVideo);
+      return;
+    }
+    _openFullscreenVideo(context, exercise.name, resolvedVideo);
+  }
+
+  void _openFullscreenVideo(
+    BuildContext context,
+    String exerciseTitle,
+    ResolvedExerciseVideo resolvedVideo,
+  ) {
+    if (!resolvedVideo.isPlayable &&
+        resolvedVideo.kind != ExerciseVideoKind.youtubeSearch) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ExerciseVideoFullscreenPage(
+          title: exerciseTitle,
+          resolvedVideo: resolvedVideo,
+        ),
+      ),
     );
   }
 
-  bool _hasVideoContent(WorkoutExercise exercise) {
-    return exercise.videoUrl != null &&
-        exercise.videoUrl!.isNotEmpty &&
-        (exercise.mediaType == ExerciseMediaType.youtube ||
-            exercise.videoUrl!.contains('youtube.com') ||
-            exercise.videoUrl!.contains('youtu.be'));
-  }
-
-  String? _resolveVideoThumbnail(WorkoutExercise exercise) {
-    final videoUrl = exercise.videoUrl;
-    if (videoUrl == null || videoUrl.isEmpty) return exercise.imageUrl;
-
-    final uri = Uri.tryParse(videoUrl);
-    if (uri == null) return exercise.imageUrl;
-
-    if (uri.host.contains('youtu.be')) {
-      final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
-      if (id != null && id.isNotEmpty) {
-        return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
-      }
-    }
-
-    if (uri.host.contains('youtube.com')) {
-      final id = uri.queryParameters['v'];
-      if (id != null && id.isNotEmpty) {
-        return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
-      }
-    }
-
-    return exercise.imageUrl;
-  }
-
-  Future<void> _openExerciseVideo(BuildContext context, String videoUrl) async {
-    final uri = Uri.tryParse(videoUrl);
-    if (uri == null) {
+  void _openSearchVideo(
+    BuildContext context,
+    String exerciseTitle,
+    ResolvedExerciseVideo resolvedVideo,
+  ) {
+    final url = resolvedVideo.normalizedUrl;
+    if (url == null || url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Некорректная ссылка на видео')),
+        const SnackBar(content: Text('Ссылка поиска видео недоступна')),
       );
       return;
     }
-
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось открыть видео')),
-      );
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ExerciseSearchWebViewPage(
+          url: url,
+          title: exerciseTitle,
+        ),
+      ),
+    );
   }
 
   Widget _buildMediaPlaceholder({

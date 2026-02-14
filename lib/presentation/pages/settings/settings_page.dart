@@ -133,7 +133,17 @@ class _SettingsPageState extends State<SettingsPage> {
             activeTrackColor: AppColors.primary,
             onChanged: (value) async {
               setState(() => _reminderEnabled = value);
-              await _notificationService.setEnabled(value);
+              final success = await _notificationService.setEnabled(value);
+              if (!success && mounted) {
+                setState(() => _reminderEnabled = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Разрешение на уведомления не выдано. Включите его в настройках устройства.',
+                    ),
+                  ),
+                );
+              }
             },
             secondary: Icon(
               _reminderEnabled ? Icons.alarm_on : Icons.alarm_off,

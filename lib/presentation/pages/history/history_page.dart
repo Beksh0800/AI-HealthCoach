@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'dart:math' as math;
 
 import '../../../core/di/injection_container.dart';
 import '../../../core/theme/app_colors.dart';
@@ -48,8 +49,8 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
     return Scaffold(
       appBar: AppBar(
         title: const Text('История и Прогресс'),
-        // Leading button removed for top-level tab
 
+        // Leading button removed for top-level tab
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -81,7 +82,10 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                     _buildChartTabs(context, state),
                     const SizedBox(height: 24),
                     if (state.typeDistribution.isNotEmpty) ...[
-                      _buildTypeDistributionChart(context, state.typeDistribution),
+                      _buildTypeDistributionChart(
+                        context,
+                        state.typeDistribution,
+                      ),
                       const SizedBox(height: 24),
                     ],
                     const Text(
@@ -95,7 +99,9 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                     if (state.history.isEmpty)
                       _buildEmptyState()
                     else
-                      ...state.history.map((workout) => _buildHistoryCard(workout)),
+                      ...state.history.map(
+                        (workout) => _buildHistoryCard(workout),
+                      ),
                   ],
                 ),
               ),
@@ -141,11 +147,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             height: 40,
             color: Colors.white.withValues(alpha: 0.3),
           ),
-          _buildStatItem(
-            state.totalMinutes.toString(),
-            'Минут',
-            Icons.timer,
-          ),
+          _buildStatItem(state.totalMinutes.toString(), 'Минут', Icons.timer),
         ],
       ),
     );
@@ -221,13 +223,16 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
   Widget _buildBarChart(List<double> data, {required bool isWeekly}) {
     final maxY = data.fold(0.0, (prev, curr) => curr > prev ? curr : prev);
     final roundedMax = maxY > 0 ? (maxY * 1.2).ceilToDouble() : 60;
+    final yInterval = math.max(1.0, (roundedMax / 4).ceilToDouble());
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.1),
+        ),
       ),
       child: BarChart(
         BarChartData(
@@ -248,13 +253,21 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           ),
           titlesData: FlTitlesData(
             show: true,
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
+                interval: yInterval,
                 getTitlesWidget: (value, meta) {
+                  if (value < 0) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     value.toInt().toString(),
                     style: TextStyle(
@@ -276,9 +289,13 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                       child: Text(
                         _getDayLabel(index),
                         style: TextStyle(
-                          color: index == 6 ? AppColors.primary : AppColors.textSecondary,
+                          color: index == 6
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                           fontSize: 10,
-                          fontWeight: index == 6 ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: index == 6
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     );
@@ -292,7 +309,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            horizontalInterval: roundedMax > 0 ? roundedMax / 4 : 15,
+            horizontalInterval: yInterval,
             getDrawingHorizontalLine: (value) => FlLine(
               color: AppColors.textSecondary.withValues(alpha: 0.1),
               strokeWidth: 1,
@@ -309,8 +326,14 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                   borderRadius: BorderRadius.circular(6),
                   gradient: LinearGradient(
                     colors: isToday
-                        ? [AppColors.primary, AppColors.primary.withValues(alpha: 0.7)]
-                        : [AppColors.primary.withValues(alpha: 0.5), AppColors.primary.withValues(alpha: 0.2)],
+                        ? [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.7),
+                          ]
+                        : [
+                            AppColors.primary.withValues(alpha: 0.5),
+                            AppColors.primary.withValues(alpha: 0.2),
+                          ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -329,23 +352,37 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
   Widget _buildLineChart(List<double> data) {
     final maxY = data.fold(0.0, (prev, curr) => curr > prev ? curr : prev);
     final roundedMax = maxY > 0 ? (maxY * 1.2).ceilToDouble() : 60;
+    final yInterval = math.max(1.0, (roundedMax / 4).ceilToDouble());
+    final lastIndex = data.isEmpty ? 0 : data.length - 1;
+    final labelIndexes = <int>{
+      0,
+      if (lastIndex >= 7) 7,
+      if (lastIndex >= 14) 14,
+      if (lastIndex >= 21) 21,
+      lastIndex,
+    };
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.1),
+        ),
       ),
       child: LineChart(
         LineChartData(
+          minX: 0,
+          maxX: lastIndex.toDouble(),
           maxY: roundedMax.toDouble(),
           minY: 0,
+          clipData: const FlClipData.all(),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
               getTooltipItems: (spots) {
                 return spots.map((spot) {
-                  final daysAgo = 29 - spot.x.toInt();
+                  final daysAgo = lastIndex - spot.x.toInt();
                   final date = DateTime.now().subtract(Duration(days: daysAgo));
                   return LineTooltipItem(
                     '${DateFormat('d MMM', 'ru').format(date)}\n${spot.y.toInt()} мин',
@@ -360,13 +397,21 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             ),
           ),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
+                interval: yInterval,
                 getTitlesWidget: (value, meta) {
+                  if (value < 0) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     value.toInt().toString(),
                     style: TextStyle(
@@ -380,12 +425,19 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: 7,
+                reservedSize: 22,
+                interval: 1,
+                minIncluded: false,
+                maxIncluded: false,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index >= 0 && index < 30) {
-                    final daysAgo = 29 - index;
-                    final date = DateTime.now().subtract(Duration(days: daysAgo));
+                  if (index >= 0 &&
+                      index <= lastIndex &&
+                      labelIndexes.contains(index)) {
+                    final daysAgo = lastIndex - index;
+                    final date = DateTime.now().subtract(
+                      Duration(days: daysAgo),
+                    );
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
@@ -406,7 +458,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            horizontalInterval: roundedMax > 0 ? roundedMax / 4 : 15,
+            horizontalInterval: yInterval,
             getDrawingHorizontalLine: (value) => FlLine(
               color: AppColors.textSecondary.withValues(alpha: 0.1),
               strokeWidth: 1,
@@ -414,8 +466,16 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           ),
           lineBarsData: [
             LineChartBarData(
-              spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+              spots: data
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => FlSpot(e.key.toDouble(), e.value < 0 ? 0 : e.value),
+                  )
+                  .toList(),
               isCurved: true,
+              preventCurveOverShooting: true,
+              preventCurveOvershootingThreshold: 10,
               curveSmoothness: 0.3,
               color: AppColors.primary,
               barWidth: 3,
@@ -441,7 +501,10 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
 
   // ────────────────────── Pie Chart (Type Distribution) ──────────────────────
 
-  Widget _buildTypeDistributionChart(BuildContext context, Map<String, int> distribution) {
+  Widget _buildTypeDistributionChart(
+    BuildContext context,
+    Map<String, int> distribution,
+  ) {
     final total = distribution.values.fold(0, (a, b) => a + b);
     if (total == 0) return const SizedBox.shrink();
 
@@ -468,7 +531,9 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.1)),
+            border: Border.all(
+              color: AppColors.textSecondary.withValues(alpha: 0.1),
+            ),
           ),
           child: Row(
             children: [
@@ -562,10 +627,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             color: AppColors.primaryLight.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            _getIconForType(workout.type),
-            color: AppColors.primary,
-          ),
+          child: Icon(_getIconForType(workout.type), color: AppColors.primary),
         ),
         title: Text(
           workout.title,
@@ -579,13 +641,23 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.timer_outlined, size: 14, color: AppColors.textSecondary),
+                Icon(
+                  Icons.timer_outlined,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: 4),
-                Text(workout.durationFormatted, style: const TextStyle(fontSize: 12)),
+                Text(
+                  workout.durationFormatted,
+                  style: const TextStyle(fontSize: 12),
+                ),
                 const SizedBox(width: 12),
                 Icon(Icons.flash_on, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
-                Text(workout.intensityLabel, style: const TextStyle(fontSize: 12)),
+                Text(
+                  workout.intensityLabel,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ],
@@ -600,18 +672,11 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Column(
           children: [
-            const Icon(
-              Icons.history,
-              size: 64,
-              color: Color(0xFFE5E7EB),
-            ),
+            const Icon(Icons.history, size: 64, color: Color(0xFFE5E7EB)),
             const SizedBox(height: 16),
             Text(
               'История пуста',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
             ),
           ],
         ),

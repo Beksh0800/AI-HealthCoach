@@ -27,7 +27,9 @@ class NotificationService {
 
     await _configureTimezone();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@drawable/ic_stat_notify',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -44,7 +46,12 @@ class NotificationService {
     // Re-schedule if reminders were enabled
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_prefEnabled) ?? false) {
-      await _scheduleFromPrefs(prefs);
+      try {
+        // Do not show permission dialogs during app bootstrap.
+        await _scheduleFromPrefs(prefs, requestPermissions: false);
+      } catch (e) {
+        debugPrint('NotificationService: bootstrap re-schedule skipped: $e');
+      }
     }
   }
 
@@ -121,8 +128,13 @@ class NotificationService {
 
   // ── Private helpers ─────────────────────────────
 
-  Future<void> _scheduleFromPrefs(SharedPreferences prefs) async {
-    final granted = await ensurePermissions();
+  Future<void> _scheduleFromPrefs(
+    SharedPreferences prefs, {
+    bool requestPermissions = true,
+  }) async {
+    final granted = requestPermissions
+        ? await ensurePermissions()
+        : await _hasPermissionsForAutoReschedule();
     if (!granted) {
       debugPrint('NotificationService: permission denied, skipping schedule');
       return;
@@ -140,12 +152,21 @@ class NotificationService {
     for (final day in weekdays) {
       await _scheduleWeekly(day, h, m);
     }
-    debugPrint('NotificationService: scheduled for $weekdays at $h:${m.toString().padLeft(2, '0')}');
+    debugPrint(
+      'NotificationService: scheduled for $weekdays at $h:${m.toString().padLeft(2, '0')}',
+    );
   }
 
   Future<void> _scheduleWeekly(int weekday, int hour, int minute) async {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
 
     // Adjust to the correct weekday
     while (scheduled.weekday != weekday) {
@@ -160,7 +181,8 @@ class NotificationService {
       await _plugin.zonedSchedule(
         id: _notificationId + weekday,
         title: '🏋️ Время тренировки!',
-        body: 'Не забудь провести тренировку сегодня. Твоё здоровье в твоих руках!',
+        body:
+            'Не забудь провести тренировку сегодня. Твоё здоровье в твоих руках!',
         scheduledDate: scheduled,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -169,24 +191,28 @@ class NotificationService {
             channelDescription: 'Напоминания о тренировках',
             importance: Importance.high,
             priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+            icon: '@drawable/ic_stat_notify',
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
     } catch (e) {
-      debugPrint('NotificationService: error scheduling for weekday $weekday: $e');
+      debugPrint(
+        'NotificationService: error scheduling for weekday $weekday: $e',
+      );
     }
   }
 
   Future<bool> ensurePermissions() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
-      final notificationsGranted =
-          await android.requestNotificationsPermission() ?? false;
-      if (!notificationsGranted) {
+      final notificationsGranted = await android
+          .requestNotificationsPermission();
+      if (notificationsGranted == false) {
         debugPrint('NotificationService: notifications permission denied');
         return false;
       }
@@ -198,8 +224,10 @@ class NotificationService {
       return true;
     }
 
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       return await ios.requestPermissions(
             alert: true,
@@ -209,8 +237,10 @@ class NotificationService {
           false;
     }
 
-    final mac = _plugin.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
+    final mac = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
     if (mac != null) {
       return await mac.requestPermissions(
             alert: true,
@@ -220,6 +250,24 @@ class NotificationService {
           false;
     }
 
+    return true;
+  }
+
+  Future<bool> _hasPermissionsForAutoReschedule() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android != null) {
+      // Passive check only: no runtime dialogs during startup.
+      final notificationsEnabled = await android.areNotificationsEnabled();
+      if (notificationsEnabled == false) {
+        return false;
+      }
+      return true;
+    }
+
+    // For non-Android platforms, keep startup path non-blocking.
     return true;
   }
 

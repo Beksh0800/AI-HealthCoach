@@ -41,7 +41,7 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.home, // Start at home, splash is handled separately or as a route coverage
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     observers: [
       sl<AnalyticsService>().getAnalyticsObserver(),

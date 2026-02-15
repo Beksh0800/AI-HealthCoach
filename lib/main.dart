@@ -43,9 +43,7 @@ void main() async {
   }
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Pass all uncaught "fatal" errors from the framework to Crashlytics
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -60,10 +58,21 @@ void main() async {
   await initDependencies();
 
   // Initialize notification service (re-schedules reminders on app start)
-  await sl<NotificationService>().init();
+  try {
+    await sl<NotificationService>().init().timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Notification init skipped on startup: $e');
+  }
 
   // Initialize locale data for Russian date formatting
-  await initializeDateFormatting('ru', null);
+  try {
+    await initializeDateFormatting(
+      'ru',
+      null,
+    ).timeout(const Duration(seconds: 8));
+  } catch (e) {
+    debugPrint('Locale init skipped on startup: $e');
+  }
 
   runApp(const AIHealthCoachApp());
 }
@@ -78,18 +87,10 @@ class AIHealthCoachApp extends StatelessWidget {
         BlocProvider<AuthCubit>(
           create: (_) => sl<AuthCubit>()..checkAuthStatus(),
         ),
-        BlocProvider<ProfileCubit>(
-          create: (_) => sl<ProfileCubit>(),
-        ),
-        BlocProvider<CheckInCubit>(
-          create: (_) => sl<CheckInCubit>(),
-        ),
-        BlocProvider<HistoryCubit>(
-          create: (_) => sl<HistoryCubit>(),
-        ),
-        BlocProvider<WorkoutCubit>(
-          create: (_) => sl<WorkoutCubit>(),
-        ),
+        BlocProvider<ProfileCubit>(create: (_) => sl<ProfileCubit>()),
+        BlocProvider<CheckInCubit>(create: (_) => sl<CheckInCubit>()),
+        BlocProvider<HistoryCubit>(create: (_) => sl<HistoryCubit>()),
+        BlocProvider<WorkoutCubit>(create: (_) => sl<WorkoutCubit>()),
       ],
       child: MaterialApp.router(
         title: 'AI-HealthCoach',

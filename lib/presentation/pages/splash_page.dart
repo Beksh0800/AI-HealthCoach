@@ -14,7 +14,8 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -52,7 +53,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   void _checkAndNavigate() {
     if (_hasNavigated || !mounted) return;
-    
+
     final state = context.read<AuthCubit>().state;
     _navigateBasedOnAuthState(state);
   }
@@ -65,7 +66,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   void _navigateBasedOnAuthState(AuthState state) {
     if (_hasNavigated || !mounted) return;
-    
+
     _hasNavigated = true;
 
     if (state is AuthAuthenticated) {
@@ -93,10 +94,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary,
-              AppColors.primaryDark,
-            ],
+            colors: [AppColors.primary, AppColors.primaryDark],
           ),
         ),
         child: Center(
@@ -118,10 +116,12 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        child: const Icon(
-                          Icons.fitness_center,
-                          size: 64,
-                          color: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Image.asset(
+                            'assets/images/ai_health_coach_logo.png',
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),

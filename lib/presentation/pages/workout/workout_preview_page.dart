@@ -25,9 +25,7 @@ class WorkoutPreviewPage extends StatelessWidget {
         if (state is! WorkoutReady) {
           return Scaffold(
             appBar: AppBar(title: const Text('Тренировка')),
-            body: const Center(
-              child: Text('Тренировка не найдена'),
-            ),
+            body: const Center(child: Text('Тренировка не найдена')),
           );
         }
 
@@ -56,21 +54,35 @@ class WorkoutPreviewPage extends StatelessWidget {
 
                         // Warmup Section
                         if (workout.warmup.isNotEmpty) ...[
-                          _buildSectionHeader('Разминка', Icons.whatshot, AppColors.warning),
+                          _buildSectionHeader(
+                            'Разминка',
+                            Icons.whatshot,
+                            AppColors.warning,
+                          ),
                           const SizedBox(height: 12),
                           ...workout.warmup.map((e) => _buildExerciseCard(e)),
                           const SizedBox(height: 24),
                         ],
 
                         // Main Exercises
-                        _buildSectionHeader('Основные упражнения', Icons.fitness_center, AppColors.primary),
+                        _buildSectionHeader(
+                          'Основные упражнения',
+                          Icons.fitness_center,
+                          AppColors.primary,
+                        ),
                         const SizedBox(height: 12),
-                        ...workout.mainExercises.map((e) => _buildExerciseCard(e)),
+                        ...workout.mainExercises.map(
+                          (e) => _buildExerciseCard(e),
+                        ),
                         const SizedBox(height: 24),
 
                         // Cooldown Section
                         if (workout.cooldown.isNotEmpty) ...[
-                          _buildSectionHeader('Заминка', Icons.self_improvement, AppColors.info),
+                          _buildSectionHeader(
+                            'Заминка',
+                            Icons.self_improvement,
+                            AppColors.info,
+                          ),
                           const SizedBox(height: 12),
                           ...workout.cooldown.map((e) => _buildExerciseCard(e)),
                         ],
@@ -105,7 +117,10 @@ class WorkoutPreviewPage extends StatelessWidget {
                       ),
                       child: const Text(
                         'Начать тренировку',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -143,7 +158,10 @@ class WorkoutPreviewPage extends StatelessWidget {
               const SizedBox(width: 12),
               _buildInfoChip(Icons.flash_on, workout.intensity),
               const SizedBox(width: 12),
-              _buildInfoChip(Icons.format_list_numbered, '${workout.totalExercises} упр.'),
+              _buildInfoChip(
+                Icons.format_list_numbered,
+                '${workout.totalExercises} упр.',
+              ),
             ],
           ),
           if (workout.description.isNotEmpty) ...[
@@ -282,7 +300,7 @@ class WorkoutPreviewPage extends StatelessWidget {
         return thumbnail;
       }
     }
-    return exercise.imageUrl;
+    return Exercise.sanitizeImageUrl(exercise.imageUrl);
   }
 
   Widget? _buildMediaIcon(WorkoutExercise exercise) {
@@ -300,7 +318,7 @@ class WorkoutPreviewPage extends StatelessWidget {
     if (exercise.mediaType == ExerciseMediaType.lottie) {
       return const Icon(Icons.animation, color: AppColors.primary);
     }
-    if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) {
+    if (Exercise.isSupportedImageUrl(exercise.imageUrl)) {
       return const Icon(Icons.image, color: AppColors.primary);
     }
     return null;

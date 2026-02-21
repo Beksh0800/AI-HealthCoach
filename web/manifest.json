@@ -1,11 +1,11 @@
 {
-    "name": "ai_health_coach",
-    "short_name": "ai_health_coach",
+    "name": "AI Health Coach",
+    "short_name": "AI Coach",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Adaptive rehab and fitness coach powered by AI.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

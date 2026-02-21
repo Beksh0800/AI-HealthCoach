@@ -279,7 +279,7 @@ class WorkoutPlayerPage extends StatelessWidget {
       ),
       body: SafeArea(
         child: isResting
-            ? _buildRestView(context, exercise)
+            ? _buildRestView(context, state, exercise)
             : _buildExerciseView(context, state, exercise),
       ),
     );
@@ -305,7 +305,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 _buildLiveStatsRow(state, exercise),
                 const SizedBox(height: 10),
-                _buildAiInsightCard(exercise),
+                _buildAiInsightCard(context, exercise),
               ],
             ),
           ),
@@ -423,7 +423,18 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRestView(BuildContext context, WorkoutExercise exercise) {
+  Widget _buildRestView(
+    BuildContext context,
+    WorkoutInProgress state,
+    WorkoutExercise exercise,
+  ) {
+    final totalRest = exercise.restSeconds > 0 ? exercise.restSeconds : 30;
+    final remaining = (state.restRemainingSeconds ?? totalRest).clamp(
+      0,
+      totalRest,
+    );
+    final progress = 1 - (remaining / totalRest);
+
     return Center(
       child: Container(
         margin: const EdgeInsets.all(16),
@@ -454,11 +465,21 @@ class WorkoutPlayerPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${exercise.restSeconds} сек',
+              '$remaining сек',
               style: const TextStyle(
                 fontSize: 20,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                minHeight: 8,
+                value: progress.clamp(0.0, 1.0),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.16),
+                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
               ),
             ),
             const SizedBox(height: 12),
@@ -466,6 +487,12 @@ class WorkoutPlayerPage extends StatelessWidget {
               'Следующий подход: ${exercise.name}',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'После таймера тренировка продолжится автоматически',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -569,93 +596,135 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAiInsightCard(WorkoutExercise exercise) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.auto_awesome,
-                size: 14,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'AI INSIGHT',
-                style: TextStyle(
-                  color: AppColors.textSecondary.withValues(alpha: 0.9),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
+  Widget _buildAiInsightCard(BuildContext context, WorkoutExercise exercise) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showAiInsightDialog(context, exercise),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome,
+                  size: 14,
+                  color: AppColors.primary,
                 ),
+                const SizedBox(width: 4),
+                Text(
+                  'AI INSIGHT',
+                  style: TextStyle(
+                    color: AppColors.textSecondary.withValues(alpha: 0.9),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Заметка врача ИИ',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        exercise.description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: TextButton(
+                          onPressed: () =>
+                              _showAiInsightDialog(context, exercise),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(0, 34),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Понятно',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _buildInsightThumbnail(exercise),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAiInsightDialog(BuildContext context, WorkoutExercise exercise) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Заметка врача ИИ'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                exercise.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                exercise.description.isEmpty
+                    ? 'Дополнительное описание отсутствует.'
+                    : exercise.description,
+                style: const TextStyle(fontSize: 14, height: 1.4),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Заметка врача ИИ',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      exercise.description,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(0, 34),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Понятно',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              _buildInsightThumbnail(exercise),
-            ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Закрыть'),
           ),
         ],
       ),
@@ -663,7 +732,7 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   Widget _buildInsightThumbnail(WorkoutExercise exercise) {
-    final imageUrl = exercise.imageUrl;
+    final imageUrl = Exercise.sanitizeImageUrl(exercise.imageUrl);
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -1432,7 +1501,7 @@ class WorkoutPlayerPage extends StatelessWidget {
       );
     }
 
-    final imageUrl = exercise.imageUrl;
+    final imageUrl = Exercise.sanitizeImageUrl(exercise.imageUrl);
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),

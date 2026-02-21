@@ -14,30 +14,33 @@ import '../models/ai_feedback_models.dart';
 import 'openrouter_service.dart';
 import 'ai_prompts.dart';
 
-typedef ProviderExecutor = Future<String> Function({
-  required String prompt,
-  bool jsonMode,
-  int maxTokens,
-  double temperature,
-  int maxRetries,
-});
+typedef ProviderExecutor =
+    Future<String> Function({
+      required String prompt,
+      bool jsonMode,
+      int maxTokens,
+      double temperature,
+      int maxRetries,
+    });
 
 /// Service for generating workouts using Gemini AI or OpenRouter fallback
 ///
 /// Uses a unified [_executeWithProvider] method for all AI calls:
 /// OpenRouter (with multi-model fallback) → Gemini → retry on transient errors.
 class GeminiService implements IAiService {
+  static const int _workoutGenerationMaxTokens = 2200;
+
   GenerativeModel? _model;
   GenerativeModel? _textModel; // For non-JSON responses
   final OpenRouterService _openRouter;
   final ProviderExecutor? _providerExecutorOverride;
-  bool _useOpenRouter = false;
+  bool _preferOpenRouter = true;
 
   GeminiService({
     OpenRouterService? openRouter,
     ProviderExecutor? providerExecutorOverride,
-  })  : _openRouter = openRouter ?? OpenRouterService(),
-        _providerExecutorOverride = providerExecutorOverride {
+  }) : _openRouter = openRouter ?? OpenRouterService(),
+       _providerExecutorOverride = providerExecutorOverride {
     _initModel();
   }
 
@@ -48,7 +51,9 @@ class GeminiService implements IAiService {
         apiKey = dotenv.env['GEMINI_API_KEY'];
       }
     } catch (e) {
-      debugPrint('GeminiService: dotenv not initialized or error accessing env: $e');
+      debugPrint(
+        'GeminiService: dotenv not initialized or error accessing env: $e',
+      );
     }
 
     if (apiKey != null && apiKey.isNotEmpty) {
@@ -73,25 +78,32 @@ class GeminiService implements IAiService {
     }
 
     if (_openRouter.isConfigured) {
-      debugPrint('GeminiService: OpenRouter configured as fallback');
+      debugPrint(
+        'GeminiService: OpenRouter configured (PRIMARY), Gemini enabled as fallback',
+      );
+    }
+    if (_model != null) {
+      debugPrint('GeminiService: Gemini API key detected (fallback available)');
     }
   }
 
   /// Check if any AI provider is configured
   @override
   bool get isConfigured =>
-      _providerExecutorOverride != null || _model != null || _openRouter.isConfigured;
+      _providerExecutorOverride != null ||
+      _model != null ||
+      _openRouter.isConfigured;
 
-  /// Force use of OpenRouter (useful when Gemini quota is exceeded)
+  /// Use OpenRouter as primary provider (Gemini remains fallback).
   void useOpenRouter() {
-    _useOpenRouter = true;
-    debugPrint('GeminiService: Switched to OpenRouter');
+    _preferOpenRouter = true;
+    debugPrint('GeminiService: OpenRouter is primary, Gemini fallback enabled');
   }
 
-  /// Use Gemini as primary (default)
+  /// Use Gemini as primary provider (OpenRouter fallback).
   void useGemini() {
-    _useOpenRouter = false;
-    debugPrint('GeminiService: Switched to Gemini');
+    _preferOpenRouter = false;
+    debugPrint('GeminiService: Gemini is primary, OpenRouter fallback enabled');
   }
 
   // ---------------------------------------------------------------------------
@@ -119,7 +131,33 @@ class GeminiService implements IAiService {
         debugPrint('GeminiService: Retry attempt $attempt');
       }
 
-      // Try OpenRouter first
+      // Optional Gemini-first branch (when explicitly requested).
+      if (!_preferOpenRouter && _model != null) {
+        try {
+          final model = jsonMode ? _model! : (_textModel ?? _model!);
+          final response = await model
+              .generateContent([Content.text(prompt)])
+              .timeout(const Duration(seconds: 30));
+          final responseText = response.text;
+          if (responseText != null && responseText.isNotEmpty) {
+            return responseText;
+          }
+          lastError = Exception('Gemini returned empty response');
+        } catch (e) {
+          debugPrint('GeminiService: Gemini failed: $e');
+          final errorStr = e.toString().toLowerCase();
+          if (errorStr.contains('quota') || errorStr.contains('exceeded')) {
+            lastError = Exception(
+              'Квота Gemini API исчерпана. Проверьте OpenRouter (модели/баланс).',
+            );
+            // Don't retry quota errors
+            break;
+          }
+          lastError = e is Exception ? e : Exception(e.toString());
+        }
+      }
+
+      // OpenRouter path (default primary, or fallback when Gemini-first fails).
       if (_openRouter.isConfigured) {
         try {
           final responseText = await _openRouter.generateCompletionWithFallback(
@@ -129,10 +167,10 @@ class GeminiService implements IAiService {
             maxTokens: maxTokens,
             temperature: temperature,
           );
-
           if (responseText != null && responseText.isNotEmpty) {
             return responseText;
           }
+          lastError = Exception('OpenRouter returned empty response');
         } catch (e) {
           debugPrint('GeminiService: OpenRouter failed: $e');
           openRouterError = e is Exception ? e : Exception(e.toString());
@@ -140,8 +178,8 @@ class GeminiService implements IAiService {
         }
       }
 
-      // Fallback to Gemini
-      if (_model != null && !_useOpenRouter) {
+      // Gemini fallback for default OpenRouter-first flow.
+      if (_preferOpenRouter && _model != null) {
         try {
           final model = jsonMode ? _model! : (_textModel ?? _model!);
           final response = await model
@@ -154,7 +192,7 @@ class GeminiService implements IAiService {
           }
           lastError = Exception('Gemini returned empty response');
         } catch (e) {
-          debugPrint('GeminiService: Gemini failed: $e');
+          debugPrint('GeminiService: Gemini fallback failed: $e');
           final errorStr = e.toString().toLowerCase();
           if (errorStr.contains('quota') || errorStr.contains('exceeded')) {
             if (openRouterError != null) {
@@ -175,7 +213,9 @@ class GeminiService implements IAiService {
     }
 
     throw lastError ??
-        Exception('AI не настроен. Добавьте OPENROUTER_API_KEY или GEMINI_API_KEY в .env');
+        Exception(
+          'AI не настроен. Добавьте OPENROUTER_API_KEY или GEMINI_API_KEY в .env',
+        );
   }
 
   Future<String> _requestWithProvider({
@@ -279,7 +319,9 @@ $basePrompt
     String? targetIntensity,
   }) async {
     if (!isConfigured) {
-      throw Exception('AI API не настроен. Добавьте GEMINI_API_KEY или OPENROUTER_API_KEY в .env');
+      throw Exception(
+        'AI API не настроен. Добавьте GEMINI_API_KEY или OPENROUTER_API_KEY в .env',
+      );
     }
 
     final userContraindications = _mapInjuriesToContraindications(
@@ -301,20 +343,27 @@ $basePrompt
     final responseText = await _requestWithProvider(
       prompt: prompt,
       jsonMode: true,
-      maxTokens: 4096,
+      maxTokens: _workoutGenerationMaxTokens,
     );
 
     try {
-      return parseWorkoutResponse(responseText, profile.uid, checkIn.id, workoutType);
+      return parseWorkoutResponse(
+        responseText,
+        profile.uid,
+        checkIn.id,
+        workoutType,
+      );
     } catch (e) {
       if (!_isLikelyParseError(e)) rethrow;
-      debugPrint('GeminiService: parse failed, retrying once with stricter JSON prompt');
+      debugPrint(
+        'GeminiService: parse failed, retrying once with stricter JSON prompt',
+      );
     }
 
     final retryResponseText = await _requestWithProvider(
       prompt: _buildStrictJsonRetryPrompt(prompt),
       jsonMode: true,
-      maxTokens: 4096,
+      maxTokens: _workoutGenerationMaxTokens,
       temperature: 0.2,
       maxRetries: 0,
     );
@@ -454,7 +503,12 @@ $basePrompt
         jsonMode: true,
         maxTokens: 2048, // Increased from 1024 to avoid truncated responses
       );
-      return parsePostWorkoutFeedback(responseText, workoutType, durationMinutes, painReports);
+      return parsePostWorkoutFeedback(
+        responseText,
+        workoutType,
+        durationMinutes,
+        painReports,
+      );
     } catch (e) {
       debugPrint('Error generating post-workout feedback: $e');
       return getDefaultPostWorkoutFeedback(
@@ -490,10 +544,12 @@ $basePrompt
     if (problematicAreas.isNotEmpty) {
       if (baseIntensity == WorkoutIntensity.high) {
         adjustedIntensity = WorkoutIntensity.moderate;
-        reason = 'Снижена из-за повторяющихся проблем: ${problematicAreas.join(", ")}';
+        reason =
+            'Снижена из-за повторяющихся проблем: ${problematicAreas.join(", ")}';
       } else if (baseIntensity == WorkoutIntensity.moderate) {
         adjustedIntensity = WorkoutIntensity.light;
-        reason = 'Снижена из-за повторяющихся проблем: ${problematicAreas.join(", ")}';
+        reason =
+            'Снижена из-за повторяющихся проблем: ${problematicAreas.join(", ")}';
       }
 
       for (final area in problematicAreas) {
@@ -504,7 +560,8 @@ $basePrompt
     if (recentWorkoutCount >= 5) {
       if (adjustedIntensity == WorkoutIntensity.high) {
         adjustedIntensity = WorkoutIntensity.moderate;
-        reason = '${reason.isEmpty ? '' : '$reason. '}Рекомендуется восстановление после активной недели';
+        reason =
+            '${reason.isEmpty ? '' : '$reason. '}Рекомендуется восстановление после активной недели';
       }
     }
 
@@ -516,7 +573,9 @@ $basePrompt
     return PainAdaptedIntensity(
       originalIntensity: baseIntensity,
       adjustedIntensity: adjustedIntensity,
-      reason: reason.isEmpty ? 'Интенсивность соответствует вашему состоянию' : reason,
+      reason: reason.isEmpty
+          ? 'Интенсивность соответствует вашему состоянию'
+          : reason,
       problematicAreas: problematicAreas,
       avoidExerciseTypes: avoidExercises.toSet().toList(),
     );
@@ -540,7 +599,10 @@ $basePrompt
       cleanedText = cleanedText.substring(0, cleanedText.length - 3);
     }
     // Remove <think>...</think> reasoning blocks (from DeepSeek)
-    cleanedText = cleanedText.replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '');
+    cleanedText = cleanedText.replaceAll(
+      RegExp(r'<think>[\s\S]*?</think>'),
+      '',
+    );
     return repairJson(cleanedText.trim());
   }
 
@@ -584,7 +646,8 @@ $basePrompt
       }
 
       final nextChar = _nextSignificantChar(input, i + 1);
-      final isClosingQuote = nextChar == null ||
+      final isClosingQuote =
+          nextChar == null ||
           nextChar == ',' ||
           nextChar == '}' ||
           nextChar == ']' ||
@@ -684,17 +747,20 @@ $basePrompt
     try {
       final Map<String, dynamic> data = jsonDecode(cleanedText);
 
-      final warmup = (data['warmup'] as List<dynamic>?)
+      final warmup =
+          (data['warmup'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [];
 
-      final mainExercises = (data['main_exercises'] as List<dynamic>?)
+      final mainExercises =
+          (data['main_exercises'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [];
 
-      final cooldown = (data['cooldown'] as List<dynamic>?)
+      final cooldown =
+          (data['cooldown'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [];
@@ -821,7 +887,8 @@ $basePrompt
       encouragement = 'Главное — регулярность!';
     } else {
       title = '🎉 Отличная работа!';
-      summary = 'Вы выполнили $exercisesCompleted упражнений за $durationMinutes минут.';
+      summary =
+          'Вы выполнили $exercisesCompleted упражнений за $durationMinutes минут.';
       tips = ['Не забывайте о восстановлении', 'Пейте достаточно воды'];
       encouragement = 'Вы молодец! Так держать!';
     }

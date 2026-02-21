@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/di/injection_container.dart';
+import '../../../core/errors/error_mapper.dart';
 import '../../../data/models/user_profile_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../blocs/auth/auth_cubit.dart';
@@ -101,8 +102,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = ErrorMapper.toMessage(
+          e,
+          fallbackMessage: 'Не удалось сохранить профиль. Попробуйте позже.',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка сохранения: $e')),
+          SnackBar(
+            content: Text(message),
+            action: ErrorMapper.isRetryable(e)
+                ? SnackBarAction(
+                    label: 'Повторить',
+                    onPressed: _completeOnboarding,
+                  )
+                : null,
+          ),
         );
       }
     } finally {
@@ -219,10 +232,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 const SizedBox(height: 32),
                 const Text(
                   'Добро пожаловать!',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -250,10 +260,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         children: [
           const Text(
             'Расскажи о себе',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
 
@@ -336,19 +343,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
         children: [
           const Text(
             'Проблемы со здоровьем',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Выбери всё, что к тебе относится. '
             'Это поможет исключить опасные упражнения.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
 
@@ -418,18 +419,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
         children: [
           const Text(
             'Твоя цель',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Что для тебя сейчас важнее всего?',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
 
@@ -457,9 +452,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   child: Row(
                     children: [
                       Icon(
-                        isSelected
-                            ? Icons.check_circle
-                            : Icons.circle_outlined,
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
                         color: isSelected
                             ? AppColors.primary
                             : AppColors.textSecondary,
@@ -470,8 +463,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           goal,
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                             color: isSelected
                                 ? AppColors.primary
                                 : AppColors.textPrimary,

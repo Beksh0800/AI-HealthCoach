@@ -14,6 +14,7 @@ import '../../../data/services/workout_persistence_service.dart';
 import '../../../data/services/workout_analytics_service.dart';
 import '../../../data/services/workout_cache_service.dart';
 import '../../../domain/repositories/i_exercise_repository.dart';
+import '../../../core/errors/error_mapper.dart';
 
 part 'workout_state.dart';
 
@@ -29,6 +30,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   int _elapsedSeconds = 0;
   int _painReportsCount = 0;
   UserProfile? _currentProfile;
+
   /// Counter for saving progress periodically (every 10 seconds)
   int _saveCounter = 0;
 
@@ -39,13 +41,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     required WorkoutAnalyticsService analyticsService,
     required WorkoutCacheService cacheService,
     FirebaseFirestore? firestore,
-  })  : _geminiService = geminiService,
-        _exerciseRepository = exerciseRepository,
-        _persistenceService = persistenceService,
-        _analyticsService = analyticsService,
-        _cacheService = cacheService,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        super(const WorkoutInitial());
+  }) : _geminiService = geminiService,
+       _exerciseRepository = exerciseRepository,
+       _persistenceService = persistenceService,
+       _analyticsService = analyticsService,
+       _cacheService = cacheService,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       super(const WorkoutInitial());
 
   /// Check for an active saved workout session and prompt recovery
   Future<void> checkForActiveSession() async {
@@ -68,13 +70,15 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           ? DateTime.fromMillisecondsSinceEpoch(savedAtMs)
           : DateTime.now();
 
-      emit(WorkoutSessionRecovery(
-        workout: workout,
-        exerciseIndex: progress['exerciseIndex'] as int? ?? 0,
-        currentSet: progress['currentSet'] as int? ?? 1,
-        elapsedSeconds: progress['elapsedSeconds'] as int? ?? 0,
-        savedAt: savedAt,
-      ));
+      emit(
+        WorkoutSessionRecovery(
+          workout: workout,
+          exerciseIndex: progress['exerciseIndex'] as int? ?? 0,
+          currentSet: progress['currentSet'] as int? ?? 1,
+          elapsedSeconds: progress['elapsedSeconds'] as int? ?? 0,
+          savedAt: savedAt,
+        ),
+      );
     } catch (e) {
       debugPrint('Error checking active session: $e');
       // Clear corrupted data
@@ -88,12 +92,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     if (current is! WorkoutSessionRecovery) return;
 
     _elapsedSeconds = current.elapsedSeconds;
-    emit(WorkoutInProgress(
-      workout: current.workout,
-      currentExerciseIndex: current.exerciseIndex,
-      currentSet: current.currentSet,
-      elapsedSeconds: current.elapsedSeconds,
-    ));
+    emit(
+      WorkoutInProgress(
+        workout: current.workout,
+        currentExerciseIndex: current.exerciseIndex,
+        currentSet: current.currentSet,
+        elapsedSeconds: current.elapsedSeconds,
+      ),
+    );
     _startTimer();
   }
 
@@ -104,7 +110,8 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   }
 
   /// Get cached workouts for offline access.
-  Future<List<Workout>> getCachedWorkouts() => _cacheService.getCachedWorkouts();
+  Future<List<Workout>> getCachedWorkouts() =>
+      _cacheService.getCachedWorkouts();
 
   /// Load a cached workout directly into WorkoutReady state.
   void loadCachedWorkout(Workout workout) {
@@ -120,21 +127,26 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   }) async {
     _currentProfile = profile;
     _painReportsCount = 0;
-    
-    emit(WorkoutGenerating(
-      workoutType: workoutType,
-      message: 'Анализируем профиль и состояние...',
-    ));
+
+    emit(
+      WorkoutGenerating(
+        workoutType: workoutType,
+        message: 'Анализируем профиль и состояние...',
+      ),
+    );
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      emit(WorkoutGenerating(
-        workoutType: workoutType,
-        message: 'Подбираем безопасные упражнения из базы...',
-      ));
+      emit(
+        WorkoutGenerating(
+          workoutType: workoutType,
+          message: 'Подбираем безопасные упражнения из базы...',
+        ),
+      );
 
       // Fetch available exercises for this workout type
-      final exercises = await _exerciseRepository.getExercisesByType(workoutType);
+      final exercises = await _exerciseRepository.getExercisesByType(
+        workoutType,
+      );
 
       // --- Adaptive Intensity Logic ---
       String? targetIntensity;
@@ -142,9 +154,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       String? reason;
 
       try {
-        final stats = await _analyticsService.getWorkoutStats(profile.uid);
-        final recentPain = await _analyticsService.getRecentPainReports(profile.uid);
-        
+        final statsFuture = _analyticsService.getWorkoutStats(profile.uid);
+        final recentPainFuture = _analyticsService.getRecentPainReports(
+          profile.uid,
+        );
+        final stats = await statsFuture;
+        final recentPain = await recentPainFuture;
+
         final adaptation = await _geminiService.getPainAdaptedIntensity(
           todayCheckIn: checkIn,
           recentPainReports: recentPain,
@@ -156,11 +172,12 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         reason = adaptation.reason;
 
         if (reason.isNotEmpty) {
-           emit(WorkoutGenerating(
-            workoutType: workoutType,
-            message: 'Адаптируем нагрузку: $reason',
-          ));
-          await Future.delayed(const Duration(seconds: 2));
+          emit(
+            WorkoutGenerating(
+              workoutType: workoutType,
+              message: 'Адаптируем нагрузку: $reason',
+            ),
+          );
         }
       } catch (e) {
         debugPrint('Error getting adaptive intensity: $e');
@@ -168,16 +185,19 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       }
       // -------------------------------
 
-      emit(WorkoutGenerating(
-        workoutType: workoutType,
-        message: 'AI создаёт персональную программу...',
-      ));
+      emit(
+        WorkoutGenerating(
+          workoutType: workoutType,
+          message: 'AI создаёт персональную программу...',
+        ),
+      );
 
       // Filter out specifically excluded exercises if any
       final filteredExercises = exercises.where((e) {
-        return !excludedExercises.any((excluded) => 
-          e.title.toLowerCase().contains(excluded.toLowerCase()) || 
-          e.id.toLowerCase().contains(excluded.toLowerCase())
+        return !excludedExercises.any(
+          (excluded) =>
+              e.title.toLowerCase().contains(excluded.toLowerCase()) ||
+              e.id.toLowerCase().contains(excluded.toLowerCase()),
         );
       }).toList();
 
@@ -195,40 +215,59 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         profile.medicalProfile.gender,
       );
 
-      debugPrint('WorkoutCubit: Workout received from GeminiService: ${workout.title}');
-      debugPrint('WorkoutCubit: Exercises count - warmup: ${workout.warmup.length}, main: ${workout.mainExercises.length}, cooldown: ${workout.cooldown.length}');
+      debugPrint(
+        'WorkoutCubit: Workout received from GeminiService: ${workout.title}',
+      );
+      debugPrint(
+        'WorkoutCubit: Exercises count - warmup: ${workout.warmup.length}, main: ${workout.mainExercises.length}, cooldown: ${workout.cooldown.length}',
+      );
 
-      emit(WorkoutGenerating(
-        workoutType: workoutType,
-        message: 'Проверяем безопасность упражнений...',
-      ));
+      emit(
+        WorkoutGenerating(
+          workoutType: workoutType,
+          message: 'Проверяем безопасность упражнений...',
+        ),
+      );
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      final localWorkout = workout.copyWith(
+        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      emit(WorkoutReady(localWorkout));
 
-      // Cache workout for offline access
-      await _cacheService.cacheWorkout(workout);
-
-      // Save workout to Firestore
-      debugPrint('WorkoutCubit: Saving workout to Firestore...');
-      try {
-        final docRef = await _firestore.collection('workouts').add(workout.toMap());
-        debugPrint('WorkoutCubit: Workout saved with ID: ${docRef.id}');
-        final savedWorkout = workout.copyWith(id: docRef.id);
-        
-        debugPrint('WorkoutCubit: Emitting WorkoutReady state');
-        emit(WorkoutReady(savedWorkout));
-        debugPrint('WorkoutCubit: WorkoutReady emitted successfully');
-      } catch (firebaseError) {
-        debugPrint('WorkoutCubit: Firebase save failed: $firebaseError');
-        // Still emit WorkoutReady even if Firebase fails, using local workout
-        debugPrint('WorkoutCubit: Using local workout without Firebase');
-        final localWorkout = workout.copyWith(id: 'local_${DateTime.now().millisecondsSinceEpoch}');
-        emit(WorkoutReady(localWorkout));
-        debugPrint('WorkoutCubit: WorkoutReady emitted with local ID');
-      }
+      // Persist in background to avoid blocking UI transition.
+      unawaited(_cacheService.cacheWorkout(localWorkout));
+      unawaited(_saveGeneratedWorkoutToFirestore(localWorkout));
     } catch (e) {
       debugPrint('WorkoutCubit: Error in generateWorkout: $e');
-      emit(WorkoutError('Ошибка генерации: $e'));
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackMessage: 'Не удалось сгенерировать тренировку',
+      );
+      emit(
+        WorkoutError(
+          mapped.message,
+          retryable: ErrorMapper.isRetryable(e),
+          workoutType: workoutType,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveGeneratedWorkoutToFirestore(Workout localWorkout) async {
+    debugPrint('WorkoutCubit: Saving workout to Firestore in background...');
+    try {
+      final docRef = await _firestore
+          .collection('workouts')
+          .add(localWorkout.toMap());
+      debugPrint('WorkoutCubit: Workout saved with ID: ${docRef.id}');
+
+      if (isClosed) return;
+      final current = state;
+      if (current is WorkoutReady && current.workout.id == localWorkout.id) {
+        emit(WorkoutReady(localWorkout.copyWith(id: docRef.id)));
+      }
+    } catch (firebaseError) {
+      debugPrint('WorkoutCubit: Firebase save failed: $firebaseError');
     }
   }
 
@@ -238,13 +277,22 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     String gender,
   ) {
     final warmup = workout.warmup
-        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .map(
+          (exercise) =>
+              _enrichExerciseMedia(exercise, libraryExercises, gender),
+        )
         .toList();
     final main = workout.mainExercises
-        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .map(
+          (exercise) =>
+              _enrichExerciseMedia(exercise, libraryExercises, gender),
+        )
         .toList();
     final cooldown = workout.cooldown
-        .map((exercise) => _enrichExerciseMedia(exercise, libraryExercises, gender))
+        .map(
+          (exercise) =>
+              _enrichExerciseMedia(exercise, libraryExercises, gender),
+        )
         .toList();
 
     return workout.copyWith(
@@ -272,12 +320,19 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     }
 
     final found = match.first;
-    final resolvedUrl = found.resolveMediaUrl(gender: gender);
+    final resolvedMediaUrl = found.resolveMediaUrl(gender: gender);
+    final fallbackVideoUrl =
+        resolvedMediaUrl != null &&
+            !Exercise.isSupportedImageUrl(resolvedMediaUrl)
+        ? resolvedMediaUrl
+        : null;
 
     return workoutExercise.copyWith(
       exerciseId: found.id,
-      imageUrl: resolvedUrl ?? workoutExercise.imageUrl,
-      videoUrl: found.videoUrl ?? workoutExercise.videoUrl,
+      imageUrl:
+          found.resolveImageUrl(gender: gender) ??
+          Exercise.sanitizeImageUrl(workoutExercise.imageUrl),
+      videoUrl: found.videoUrl ?? fallbackVideoUrl ?? workoutExercise.videoUrl,
       mediaType: found.mediaType,
       source: found.source,
       license: found.license,
@@ -285,7 +340,10 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   }
 
   String _normalizeName(String value) {
-    return value.toLowerCase().replaceAll(RegExp(r'[^a-zа-я0-9]+', caseSensitive: false), ' ').trim();
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-zа-я0-9]+', caseSensitive: false), ' ')
+        .trim();
   }
 
   /// Start the workout
@@ -306,7 +364,28 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       _saveCounter++;
       final current = state;
       if (current is WorkoutInProgress && !current.isPaused) {
-        emit(current.copyWith(elapsedSeconds: _elapsedSeconds));
+        if (current.isResting) {
+          final currentRemaining = current.restRemainingSeconds ?? 0;
+          final nextRemaining = currentRemaining - 1;
+
+          if (nextRemaining <= 0) {
+            emit(
+              current.copyWith(
+                elapsedSeconds: _elapsedSeconds,
+                isResting: false,
+              ),
+            );
+          } else {
+            emit(
+              current.copyWith(
+                elapsedSeconds: _elapsedSeconds,
+                restRemainingSeconds: nextRemaining,
+              ),
+            );
+          }
+        } else {
+          emit(current.copyWith(elapsedSeconds: _elapsedSeconds));
+        }
         // Save progress every 10 seconds
         if (_saveCounter >= 10) {
           _saveCounter = 0;
@@ -334,10 +413,16 @@ class WorkoutCubit extends Cubit<WorkoutState> {
 
     if (!current.isLastSet) {
       // More sets to do - go to rest
-      emit(current.copyWith(
-        currentSet: current.currentSet + 1,
-        isResting: true,
-      ));
+      final restSeconds = current.currentExercise.restSeconds > 0
+          ? current.currentExercise.restSeconds
+          : 30;
+      emit(
+        current.copyWith(
+          currentSet: current.currentSet + 1,
+          isResting: true,
+          restRemainingSeconds: restSeconds,
+        ),
+      );
     } else {
       // All sets done - move to next exercise
       _moveToNextExercise();
@@ -348,7 +433,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void finishRest() {
     final current = state;
     if (current is WorkoutInProgress && current.isResting) {
-      emit(current.copyWith(isResting: false));
+      emit(current.copyWith(isResting: false, restRemainingSeconds: 0));
     }
   }
 
@@ -367,11 +452,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       // Workout complete!
       _finishWorkout(current.workout);
     } else {
-      emit(current.copyWith(
-        currentExerciseIndex: current.currentExerciseIndex + 1,
-        currentSet: 1,
-        isResting: false,
-      ));
+      emit(
+        current.copyWith(
+          currentExerciseIndex: current.currentExerciseIndex + 1,
+          currentSet: 1,
+          isResting: false,
+          restRemainingSeconds: 0,
+        ),
+      );
     }
   }
 
@@ -379,11 +467,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void previousExercise() {
     final current = state;
     if (current is WorkoutInProgress && current.currentExerciseIndex > 0) {
-      emit(current.copyWith(
-        currentExerciseIndex: current.currentExerciseIndex - 1,
-        currentSet: 1,
-        isResting: false,
-      ));
+      emit(
+        current.copyWith(
+          currentExerciseIndex: current.currentExerciseIndex - 1,
+          currentSet: 1,
+          isResting: false,
+          restRemainingSeconds: 0,
+        ),
+      );
     }
   }
 
@@ -411,11 +502,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     if (current is WorkoutInProgress) {
       _timer?.cancel();
       _painReportsCount++;
-      emit(WorkoutPainReported(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: _elapsedSeconds,
-      ));
+      emit(
+        WorkoutPainReported(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: _elapsedSeconds,
+        ),
+      );
     }
   }
 
@@ -424,13 +517,15 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     final current = state;
     if (current is! WorkoutPainReported) return;
 
-    emit(WorkoutExerciseReplacing(
-      workout: current.workout,
-      currentExerciseIndex: current.currentExerciseIndex,
-      elapsedSeconds: current.elapsedSeconds,
-      painLocation: painLocation,
-      message: 'Подбираем безопасную альтернативу...',
-    ));
+    emit(
+      WorkoutExerciseReplacing(
+        workout: current.workout,
+        currentExerciseIndex: current.currentExerciseIndex,
+        elapsedSeconds: current.elapsedSeconds,
+        painLocation: painLocation,
+        message: 'Подбираем безопасную альтернативу...',
+      ),
+    );
 
     try {
       if (_currentProfile == null) {
@@ -440,7 +535,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       }
 
       final exercises = await _exerciseRepository.getExercises();
-      
+
       final replacement = await _geminiService.replaceExercise(
         currentExercise: current.currentExercise,
         painLocation: painLocation,
@@ -455,12 +550,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           current.currentExerciseIndex,
           replacement,
         );
-        
-        emit(WorkoutInProgress(
-          workout: updatedWorkout,
-          currentExerciseIndex: current.currentExerciseIndex,
-          elapsedSeconds: current.elapsedSeconds,
-        ));
+
+        emit(
+          WorkoutInProgress(
+            workout: updatedWorkout,
+            currentExerciseIndex: current.currentExerciseIndex,
+            elapsedSeconds: current.elapsedSeconds,
+          ),
+        );
         _startTimer();
       } else {
         // Couldn't get replacement, skip to next
@@ -484,19 +581,23 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void cancelPainReport() {
     final current = state;
     if (current is WorkoutPainReported) {
-      emit(WorkoutInProgress(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: current.elapsedSeconds,
-      ));
+      emit(
+        WorkoutInProgress(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: current.elapsedSeconds,
+        ),
+      );
       _startTimer();
     } else if (current is WorkoutPainRest) {
       _restTimer?.cancel();
-      emit(WorkoutInProgress(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: current.elapsedSeconds,
-      ));
+      emit(
+        WorkoutInProgress(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: current.elapsedSeconds,
+        ),
+      );
       _startTimer();
     }
   }
@@ -504,22 +605,22 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   /// Step 1 -> Step 2: Select pain location and move to intensity selection
   void selectPainLocation(String location) {
     final current = state;
-    if (current is WorkoutPainReported && current.step == PainFlowStep.location) {
-      emit(current.copyWith(
-        step: PainFlowStep.intensity,
-        painLocation: location,
-      ));
+    if (current is WorkoutPainReported &&
+        current.step == PainFlowStep.location) {
+      emit(
+        current.copyWith(step: PainFlowStep.intensity, painLocation: location),
+      );
     }
   }
 
   /// Step 2 -> Step 3: Select pain intensity and move to action selection
   void selectPainIntensity(int intensity) {
     final current = state;
-    if (current is WorkoutPainReported && current.step == PainFlowStep.intensity) {
-      emit(current.copyWith(
-        step: PainFlowStep.action,
-        painIntensity: intensity,
-      ));
+    if (current is WorkoutPainReported &&
+        current.step == PainFlowStep.intensity) {
+      emit(
+        current.copyWith(step: PainFlowStep.action, painIntensity: intensity),
+      );
     }
   }
 
@@ -541,15 +642,17 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void takePainRest(int durationSeconds) {
     final current = state;
     if (current is WorkoutPainReported) {
-      emit(WorkoutPainRest(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: current.elapsedSeconds,
-        restDurationSeconds: durationSeconds,
-        remainingSeconds: durationSeconds,
-        painLocation: current.painLocation ?? '',
-        painIntensity: current.painIntensity ?? 5,
-      ));
+      emit(
+        WorkoutPainRest(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: current.elapsedSeconds,
+          restDurationSeconds: durationSeconds,
+          remainingSeconds: durationSeconds,
+          painLocation: current.painLocation ?? '',
+          painIntensity: current.painIntensity ?? 5,
+        ),
+      );
       _startRestTimer();
     }
   }
@@ -563,7 +666,9 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           _restTimer?.cancel();
           finishPainRest();
         } else {
-          emit(current.copyWith(remainingSeconds: current.remainingSeconds - 1));
+          emit(
+            current.copyWith(remainingSeconds: current.remainingSeconds - 1),
+          );
         }
       } else {
         timer.cancel();
@@ -576,11 +681,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     _restTimer?.cancel();
     final current = state;
     if (current is WorkoutPainRest) {
-      emit(WorkoutInProgress(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: current.elapsedSeconds,
-      ));
+      emit(
+        WorkoutInProgress(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: current.elapsedSeconds,
+        ),
+      );
       _startTimer();
     }
   }
@@ -589,13 +696,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void endWorkoutDueToPain() {
     final current = state;
     Workout? workout;
-    
+
     if (current is WorkoutPainReported) {
       workout = current.workout;
     } else if (current is WorkoutPainRest) {
       workout = current.workout;
     }
-    
+
     if (workout != null) {
       _restTimer?.cancel();
       _timer?.cancel();
@@ -607,11 +714,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void continueAfterPainAssessment() {
     final current = state;
     if (current is WorkoutPainReported) {
-      emit(WorkoutInProgress(
-        workout: current.workout,
-        currentExerciseIndex: current.currentExerciseIndex,
-        elapsedSeconds: current.elapsedSeconds,
-      ));
+      emit(
+        WorkoutInProgress(
+          workout: current.workout,
+          currentExerciseIndex: current.currentExerciseIndex,
+          elapsedSeconds: current.elapsedSeconds,
+        ),
+      );
       _startTimer();
     }
   }
@@ -624,7 +733,6 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     }
   }
 
-
   void _continueAfterPain(Workout workout, int currentIndex) {
     if (currentIndex >= workout.allExercises.length - 1) {
       // Last exercise, complete workout
@@ -632,11 +740,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       _finishWorkout(workout);
     } else {
       // Move to next exercise
-      emit(WorkoutInProgress(
-        workout: workout,
-        currentExerciseIndex: currentIndex + 1,
-        elapsedSeconds: _elapsedSeconds,
-      ));
+      emit(
+        WorkoutInProgress(
+          workout: workout,
+          currentExerciseIndex: currentIndex + 1,
+          elapsedSeconds: _elapsedSeconds,
+        ),
+      );
       _startTimer();
     }
   }
@@ -649,7 +759,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     // Calculate which section and index
     int warmupLength = workout.warmup.length;
     int mainLength = workout.mainExercises.length;
-    
+
     if (exerciseIndex < warmupLength) {
       // Replace in warmup
       final newWarmup = List<WorkoutExercise>.from(workout.warmup);
@@ -671,11 +781,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   }
 
   /// Get explanation for why an exercise is safe
-  Future<String> explainExercise(String exerciseName, String exerciseDescription) async {
+  Future<String> explainExercise(
+    String exerciseName,
+    String exerciseDescription,
+  ) async {
     if (_currentProfile == null) {
       return 'Профиль не загружен';
     }
-    
+
     return _geminiService.explainExerciseSafety(
       exerciseName: exerciseName,
       exerciseDescription: exerciseDescription,
@@ -713,17 +826,19 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   /// Finish workout and generate feedback
   Future<void> _finishWorkout(Workout workout) async {
     _timer?.cancel();
-    
+
     // 1. Emit completed state immediately
-    emit(WorkoutCompleted(
-      workout: workout,
-      totalDurationSeconds: _elapsedSeconds,
-      painReportsCount: _painReportsCount,
-    ));
-    
+    emit(
+      WorkoutCompleted(
+        workout: workout,
+        totalDurationSeconds: _elapsedSeconds,
+        painReportsCount: _painReportsCount,
+      ),
+    );
+
     // 2. Save history
     _saveWorkoutHistory(workout, _elapsedSeconds);
-    
+
     // 3. Generate feedback in background
     if (_currentProfile != null) {
       try {
@@ -735,18 +850,20 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           painReports: _painReportsCount,
           profile: _currentProfile!,
         );
-        
+
         // Update state if we are still on completion screen
         if (!isClosed && state is WorkoutCompleted) {
           final currentState = state as WorkoutCompleted;
           // Only update if it's the same workout (sanity check)
           if (currentState.workout.id == workout.id) {
-            emit(WorkoutCompleted(
-              workout: currentState.workout,
-              totalDurationSeconds: currentState.totalDurationSeconds,
-              painReportsCount: currentState.painReportsCount,
-              feedback: feedback,
-            ));
+            emit(
+              WorkoutCompleted(
+                workout: currentState.workout,
+                totalDurationSeconds: currentState.totalDurationSeconds,
+                painReportsCount: currentState.painReportsCount,
+                feedback: feedback,
+              ),
+            );
           }
         }
       } catch (e) {

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/errors/error_mapper.dart';
 import '../../../data/models/user_profile_model.dart';
 import '../../../domain/repositories/i_user_repository.dart';
 
@@ -17,9 +18,9 @@ class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit({
     required IUserRepository userRepository,
     required FirebaseAuth auth,
-  })  : _userRepository = userRepository,
-        _auth = auth,
-        super(const ProfileInitial());
+  }) : _userRepository = userRepository,
+       _auth = auth,
+       super(const ProfileInitial());
 
   /// Load the current user's profile
   Future<void> loadProfile() async {
@@ -39,7 +40,15 @@ class ProfileCubit extends Cubit<ProfileState> {
         emit(const ProfileNotFound());
       }
     } catch (e) {
-      emit(ProfileError('Ошибка загрузки профиля: $e'));
+      emit(
+        ProfileError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage:
+                'Не удалось загрузить профиль. Проверьте соединение.',
+          ),
+        ),
+      );
     }
   }
 
@@ -52,18 +61,27 @@ class ProfileCubit extends Cubit<ProfileState> {
     }
 
     _profileSubscription?.cancel();
-    _profileSubscription = _userRepository.watchUserProfile(user.uid).listen(
-      (profile) {
-        if (profile != null) {
-          emit(ProfileLoaded(profile));
-        } else {
-          emit(const ProfileNotFound());
-        }
-      },
-      onError: (error) {
-        emit(ProfileError('Ошибка синхронизации: $error'));
-      },
-    );
+    _profileSubscription = _userRepository
+        .watchUserProfile(user.uid)
+        .listen(
+          (profile) {
+            if (profile != null) {
+              emit(ProfileLoaded(profile));
+            } else {
+              emit(const ProfileNotFound());
+            }
+          },
+          onError: (error) {
+            emit(
+              ProfileError(
+                ErrorMapper.toMessage(
+                  error,
+                  fallbackMessage: 'Ошибка синхронизации профиля.',
+                ),
+              ),
+            );
+          },
+        );
   }
 
   /// Update user profile
@@ -80,7 +98,14 @@ class ProfileCubit extends Cubit<ProfileState> {
       if (currentState is ProfileLoaded) {
         emit(currentState);
       }
-      emit(ProfileError('Ошибка обновления: $e'));
+      emit(
+        ProfileError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage: 'Не удалось обновить профиль. Попробуйте позже.',
+          ),
+        ),
+      );
     }
   }
 
@@ -107,7 +132,8 @@ class ProfileCubit extends Cubit<ProfileState> {
         weight: weight ?? currentProfile.medicalProfile.weight,
         height: height ?? currentProfile.medicalProfile.height,
         gender: gender ?? currentProfile.medicalProfile.gender,
-        activityLevel: activityLevel ?? currentProfile.medicalProfile.activityLevel,
+        activityLevel:
+            activityLevel ?? currentProfile.medicalProfile.activityLevel,
         injuries: injuries ?? currentProfile.medicalProfile.injuries,
         contraindications: currentProfile.medicalProfile.contraindications,
       ),

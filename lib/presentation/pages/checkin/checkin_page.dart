@@ -80,12 +80,17 @@ class _CheckInPageContent extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: AppColors.error,
+                  ),
                   const SizedBox(height: 16),
                   Text(state.message),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => context.read<CheckInCubit>().startCheckIn(),
+                    onPressed: () =>
+                        context.read<CheckInCubit>().checkTodayStatus(),
                     child: const Text('Попробовать снова'),
                   ),
                 ],
@@ -99,7 +104,10 @@ class _CheckInPageContent extends StatelessWidget {
     );
   }
 
-  Widget _buildAlreadyCompletedView(BuildContext context, DailyCheckIn checkIn) {
+  Widget _buildAlreadyCompletedView(
+    BuildContext context,
+    DailyCheckIn checkIn,
+  ) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -151,7 +159,8 @@ class _CheckInPageContent extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.go(AppRoutes.workout, extra: initialWorkoutType),
+              onPressed: () =>
+                  context.go(AppRoutes.workout, extra: initialWorkoutType),
               child: const Text('К тренировке'),
             ),
             const SizedBox(height: 12),
@@ -173,10 +182,7 @@ class _CheckInPageContent extends StatelessWidget {
           Icon(icon, color: AppColors.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(child: Text(label)),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -223,7 +229,8 @@ class _CheckInPageContent extends StatelessWidget {
                 if (state.currentStep > 0)
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => context.read<CheckInCubit>().previousStep(),
+                      onPressed: () =>
+                          context.read<CheckInCubit>().previousStep(),
                       child: const Text('Назад'),
                     ),
                   ),
@@ -304,7 +311,10 @@ class _CheckInPageContent extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Нет боли', style: TextStyle(color: AppColors.textSecondary)),
-            Text('Сильная боль', style: TextStyle(color: AppColors.textSecondary)),
+            Text(
+              'Сильная боль',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ],
         ),
         if (state.painLevel > 0) ...[
@@ -352,7 +362,13 @@ class _CheckInPageContent extends StatelessWidget {
         ...List.generate(5, (index) {
           final level = index + 1;
           final isSelected = state.energyLevel == level;
-          final labels = ['Очень низкий', 'Низкий', 'Средний', 'Высокий', 'Очень высокий'];
+          final labels = [
+            'Очень низкий',
+            'Низкий',
+            'Средний',
+            'Высокий',
+            'Очень высокий',
+          ];
           final icons = [
             Icons.battery_0_bar,
             Icons.battery_2_bar,
@@ -364,7 +380,8 @@ class _CheckInPageContent extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: GestureDetector(
-              onTap: () => context.read<CheckInCubit>().updateEnergyLevel(level),
+              onTap: () =>
+                  context.read<CheckInCubit>().updateEnergyLevel(level),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -373,7 +390,9 @@ class _CheckInPageContent extends StatelessWidget {
                       : AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFFE5E7EB),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -381,7 +400,9 @@ class _CheckInPageContent extends StatelessWidget {
                   children: [
                     Icon(
                       icons[index],
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -389,8 +410,12 @@ class _CheckInPageContent extends StatelessWidget {
                         labels[index],
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -414,7 +439,8 @@ class _CheckInPageContent extends StatelessWidget {
             final quality = index + 1;
             final isSelected = state.sleepQuality == quality;
             return GestureDetector(
-              onTap: () => context.read<CheckInCubit>().updateSleepQuality(quality),
+              onTap: () =>
+                  context.read<CheckInCubit>().updateSleepQuality(quality),
               child: Container(
                 width: 50,
                 height: 50,
@@ -422,7 +448,9 @@ class _CheckInPageContent extends StatelessWidget {
                   color: isSelected ? AppColors.primary : AppColors.surface,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFFE5E7EB),
                   ),
                 ),
                 child: Center(
@@ -443,8 +471,14 @@ class _CheckInPageContent extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Плохо', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            Text('Отлично', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Text(
+              'Плохо',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            Text(
+              'Отлично',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
           ],
         ),
       ],
@@ -486,7 +520,9 @@ class _CheckInPageContent extends StatelessWidget {
                       : AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFFE5E7EB),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -498,8 +534,12 @@ class _CheckInPageContent extends StatelessWidget {
                     Text(
                       label.split(' ')[0],
                       style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -534,7 +574,8 @@ class _CheckInPageContent extends StatelessWidget {
             return FilterChip(
               label: Text(symptom),
               selected: isSelected,
-              onSelected: (_) => context.read<CheckInCubit>().toggleSymptom(symptom),
+              onSelected: (_) =>
+                  context.read<CheckInCubit>().toggleSymptom(symptom),
               selectedColor: AppColors.primaryLight.withValues(alpha: 0.3),
               checkmarkColor: AppColors.primary,
             );
@@ -552,7 +593,9 @@ class _CheckInPageContent extends StatelessWidget {
             hintText: 'Дополнительная информация (необязательно)',
             border: OutlineInputBorder(),
           ),
-          onChanged: (value) => context.read<CheckInCubit>().updateNotes(value.isEmpty ? null : value),
+          onChanged: (value) => context.read<CheckInCubit>().updateNotes(
+            value.isEmpty ? null : value,
+          ),
         ),
         const SizedBox(height: 32),
         Container(
@@ -560,7 +603,9 @@ class _CheckInPageContent extends StatelessWidget {
           decoration: BoxDecoration(
             color: _getSummaryColor(state).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _getSummaryColor(state).withValues(alpha: 0.3)),
+            border: Border.all(
+              color: _getSummaryColor(state).withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             children: [
@@ -604,13 +649,17 @@ class _CheckInPageContent extends StatelessWidget {
 
   Color _getSummaryColor(CheckInInProgress state) {
     if (state.painLevel >= 7) return AppColors.error;
-    if (state.painLevel >= 4 || state.energyLevel <= 2) return AppColors.warning;
+    if (state.painLevel >= 4 || state.energyLevel <= 2) {
+      return AppColors.warning;
+    }
     return AppColors.success;
   }
 
   IconData _getSummaryIcon(CheckInInProgress state) {
     if (state.painLevel >= 7) return Icons.hotel;
-    if (state.painLevel >= 4 || state.energyLevel <= 2) return Icons.self_improvement;
+    if (state.painLevel >= 4 || state.energyLevel <= 2) {
+      return Icons.self_improvement;
+    }
     return Icons.fitness_center;
   }
 

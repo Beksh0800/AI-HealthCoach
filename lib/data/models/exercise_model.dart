@@ -118,6 +118,18 @@ class ExerciseMediaType {
 }
 
 class Exercise extends Equatable {
+  static const List<String> _imageExtensions = <String>[
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+    '.gif',
+    '.bmp',
+    '.avif',
+    '.heic',
+    '.heif',
+  ];
+
   final String id;
   final String title;
   final String description;
@@ -165,6 +177,64 @@ class Exercise extends Equatable {
     return true;
   }
 
+  static String? sanitizeImageUrl(String? url) {
+    final rawUrl = url?.trim();
+    if (rawUrl == null || rawUrl.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null) {
+      return null;
+    }
+
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return null;
+    }
+
+    final host = uri.host.toLowerCase();
+    if (host.isEmpty ||
+        host.contains('youtube.com') ||
+        host.contains('youtu.be')) {
+      return null;
+    }
+
+    final decodedPath = Uri.decodeComponent(uri.path).toLowerCase();
+    for (final extension in _imageExtensions) {
+      if (decodedPath.endsWith(extension)) {
+        return rawUrl;
+      }
+    }
+
+    if (host == 'img.youtube.com' || host == 'i.ytimg.com') {
+      return rawUrl;
+    }
+
+    return null;
+  }
+
+  static bool isSupportedImageUrl(String? url) => sanitizeImageUrl(url) != null;
+
+  String? resolveImageUrl({String? gender}) {
+    final normalizedGender = gender?.trim().toLowerCase();
+    final candidates = <String?>[
+      if (normalizedGender == 'male') mediaMaleUrl,
+      if (normalizedGender == 'female') mediaFemaleUrl,
+      mediaNeutralUrl,
+      imageUrl,
+    ];
+
+    for (final candidate in candidates) {
+      final sanitized = sanitizeImageUrl(candidate);
+      if (sanitized != null) {
+        return sanitized;
+      }
+    }
+
+    return null;
+  }
+
   String? resolveMediaUrl({String? gender}) {
     final normalizedGender = gender?.trim().toLowerCase();
     if (normalizedGender == 'male' && (mediaMaleUrl?.isNotEmpty ?? false)) {
@@ -193,7 +263,9 @@ class Exercise extends Equatable {
       difficulty: map['difficulty'] ?? 'beginner',
       type: map['type'] ?? 'strength',
       targetMuscles: List<String>.from(map['target_muscles'] ?? const []),
-      contraindications: List<String>.from(map['contraindications'] ?? const []),
+      contraindications: List<String>.from(
+        map['contraindications'] ?? const [],
+      ),
       equipment: map['equipment'] ?? Equipment.none,
       estimatedSeconds: map['estimated_seconds']?.toInt() ?? 60,
       videoUrl: map['video_url'],
@@ -271,22 +343,22 @@ class Exercise extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        difficulty,
-        type,
-        targetMuscles,
-        contraindications,
-        equipment,
-        estimatedSeconds,
-        videoUrl,
-        imageUrl,
-        mediaType,
-        mediaNeutralUrl,
-        mediaMaleUrl,
-        mediaFemaleUrl,
-        source,
-        license,
-      ];
+    id,
+    title,
+    description,
+    difficulty,
+    type,
+    targetMuscles,
+    contraindications,
+    equipment,
+    estimatedSeconds,
+    videoUrl,
+    imageUrl,
+    mediaType,
+    mediaNeutralUrl,
+    mediaMaleUrl,
+    mediaFemaleUrl,
+    source,
+    license,
+  ];
 }

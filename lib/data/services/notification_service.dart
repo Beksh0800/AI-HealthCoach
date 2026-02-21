@@ -216,11 +216,6 @@ class NotificationService {
         debugPrint('NotificationService: notifications permission denied');
         return false;
       }
-
-      final canScheduleExact = await android.canScheduleExactNotifications();
-      if (canScheduleExact == false) {
-        await android.requestExactAlarmsPermission();
-      }
       return true;
     }
 

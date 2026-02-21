@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/errors/error_mapper.dart';
 import '../../../data/models/daily_checkin_model.dart';
 import '../../../domain/repositories/i_checkin_repository.dart';
 
@@ -15,9 +16,9 @@ class CheckInCubit extends Cubit<CheckInState> {
   CheckInCubit({
     required ICheckInRepository checkInRepository,
     required FirebaseAuth auth,
-  })  : _checkInRepository = checkInRepository,
-        _auth = auth,
-        super(const CheckInInitial());
+  }) : _checkInRepository = checkInRepository,
+       _auth = auth,
+       super(const CheckInInitial());
 
   /// Check if user has already completed today's check-in
   Future<void> checkTodayStatus() async {
@@ -37,7 +38,15 @@ class CheckInCubit extends Cubit<CheckInState> {
         emit(const CheckInInProgress());
       }
     } catch (e) {
-      emit(const CheckInInProgress());
+      emit(
+        CheckInError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage:
+                'Не удалось загрузить чек-ин. Проверьте соединение.',
+          ),
+        ),
+      );
     }
   }
 
@@ -154,7 +163,14 @@ class CheckInCubit extends Cubit<CheckInState> {
       final id = await _checkInRepository.saveCheckIn(checkIn);
       emit(CheckInCompleted(checkIn.copyWith(id: id)));
     } catch (e) {
-      emit(CheckInError('Ошибка сохранения: $e'));
+      emit(
+        CheckInError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage: 'Не удалось сохранить чек-ин. Попробуйте позже.',
+          ),
+        ),
+      );
     }
   }
 

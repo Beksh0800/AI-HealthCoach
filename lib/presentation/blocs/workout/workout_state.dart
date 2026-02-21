@@ -37,7 +37,13 @@ class WorkoutSessionRecovery extends WorkoutState {
   }
 
   @override
-  List<Object?> get props => [workout, exerciseIndex, currentSet, elapsedSeconds, savedAt];
+  List<Object?> get props => [
+    workout,
+    exerciseIndex,
+    currentSet,
+    elapsedSeconds,
+    savedAt,
+  ];
 }
 
 /// Generating workout with AI
@@ -70,6 +76,7 @@ class WorkoutInProgress extends WorkoutState {
   final int currentExerciseIndex;
   final int currentSet;
   final bool isResting;
+  final int? restRemainingSeconds;
   final int elapsedSeconds;
   final bool isPaused;
 
@@ -78,11 +85,13 @@ class WorkoutInProgress extends WorkoutState {
     this.currentExerciseIndex = 0,
     this.currentSet = 1,
     this.isResting = false,
+    this.restRemainingSeconds,
     this.elapsedSeconds = 0,
     this.isPaused = false,
   });
 
-  WorkoutExercise get currentExercise => workout.allExercises[currentExerciseIndex];
+  WorkoutExercise get currentExercise =>
+      workout.allExercises[currentExerciseIndex];
   int get totalExercises => workout.allExercises.length;
   double get progress => (currentExerciseIndex + 1) / totalExercises;
   bool get isLastExercise => currentExerciseIndex >= totalExercises - 1;
@@ -90,19 +99,21 @@ class WorkoutInProgress extends WorkoutState {
 
   @override
   List<Object?> get props => [
-        workout,
-        currentExerciseIndex,
-        currentSet,
-        isResting,
-        elapsedSeconds,
-        isPaused,
-      ];
+    workout,
+    currentExerciseIndex,
+    currentSet,
+    isResting,
+    restRemainingSeconds,
+    elapsedSeconds,
+    isPaused,
+  ];
 
   WorkoutInProgress copyWith({
     Workout? workout,
     int? currentExerciseIndex,
     int? currentSet,
     bool? isResting,
+    int? restRemainingSeconds,
     int? elapsedSeconds,
     bool? isPaused,
   }) {
@@ -111,6 +122,7 @@ class WorkoutInProgress extends WorkoutState {
       currentExerciseIndex: currentExerciseIndex ?? this.currentExerciseIndex,
       currentSet: currentSet ?? this.currentSet,
       isResting: isResting ?? this.isResting,
+      restRemainingSeconds: restRemainingSeconds ?? this.restRemainingSeconds,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
       isPaused: isPaused ?? this.isPaused,
     );
@@ -138,8 +150,9 @@ class WorkoutPainReported extends WorkoutState {
     this.painIntensity,
   });
 
-  WorkoutExercise get currentExercise => workout.allExercises[currentExerciseIndex];
-  
+  WorkoutExercise get currentExercise =>
+      workout.allExercises[currentExerciseIndex];
+
   /// Get pain level category
   String get painCategory {
     if (painIntensity == null) return '';
@@ -164,7 +177,14 @@ class WorkoutPainReported extends WorkoutState {
   }
 
   @override
-  List<Object?> get props => [workout, currentExerciseIndex, elapsedSeconds, step, painLocation, painIntensity];
+  List<Object?> get props => [
+    workout,
+    currentExerciseIndex,
+    elapsedSeconds,
+    step,
+    painLocation,
+    painIntensity,
+  ];
 }
 
 /// Resting due to pain
@@ -186,12 +206,11 @@ class WorkoutPainRest extends WorkoutState {
     required this.painLocation,
     required this.painIntensity,
   });
-  
-  WorkoutExercise get currentExercise => workout.allExercises[currentExerciseIndex];
 
-  WorkoutPainRest copyWith({
-    int? remainingSeconds,
-  }) {
+  WorkoutExercise get currentExercise =>
+      workout.allExercises[currentExerciseIndex];
+
+  WorkoutPainRest copyWith({int? remainingSeconds}) {
     return WorkoutPainRest(
       workout: workout,
       currentExerciseIndex: currentExerciseIndex,
@@ -204,7 +223,15 @@ class WorkoutPainRest extends WorkoutState {
   }
 
   @override
-  List<Object?> get props => [workout, currentExerciseIndex, elapsedSeconds, restDurationSeconds, remainingSeconds, painLocation, painIntensity];
+  List<Object?> get props => [
+    workout,
+    currentExerciseIndex,
+    elapsedSeconds,
+    restDurationSeconds,
+    remainingSeconds,
+    painLocation,
+    painIntensity,
+  ];
 }
 
 /// Replacing exercise with safer alternative
@@ -224,7 +251,13 @@ class WorkoutExerciseReplacing extends WorkoutState {
   });
 
   @override
-  List<Object?> get props => [workout, currentExerciseIndex, elapsedSeconds, painLocation, message];
+  List<Object?> get props => [
+    workout,
+    currentExerciseIndex,
+    elapsedSeconds,
+    painLocation,
+    message,
+  ];
 }
 
 /// Workout completed
@@ -242,15 +275,22 @@ class WorkoutCompleted extends WorkoutState {
   });
 
   @override
-  List<Object?> get props => [workout, totalDurationSeconds, painReportsCount, feedback];
+  List<Object?> get props => [
+    workout,
+    totalDurationSeconds,
+    painReportsCount,
+    feedback,
+  ];
 }
 
 /// Error state
 class WorkoutError extends WorkoutState {
   final String message;
+  final bool retryable;
+  final String? workoutType;
 
-  const WorkoutError(this.message);
+  const WorkoutError(this.message, {this.retryable = true, this.workoutType});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, retryable, workoutType];
 }

@@ -48,3 +48,13 @@ app.*.map.json
 .env
 .env.development
 .env.production
+
+# Android release signing and symbols
+/android/key.properties
+*.jks
+*.keystore
+/build/symbols/
+
+# Temporary design/export artifacts
+/flutter_*.png
+/docs/enriched_exercises_export.json

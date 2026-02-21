@@ -28,7 +28,8 @@ class _WorkoutGenerationContent extends StatefulWidget {
   const _WorkoutGenerationContent({this.initialWorkoutType});
 
   @override
-  State<_WorkoutGenerationContent> createState() => _WorkoutGenerationContentState();
+  State<_WorkoutGenerationContent> createState() =>
+      _WorkoutGenerationContentState();
 }
 
 class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
@@ -51,8 +52,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Выбор тренировки'),
-        // Leading button removed for top-level tab
 
+        // Leading button removed for top-level tab
       ),
       body: BlocConsumer<WorkoutCubit, WorkoutState>(
         listener: (context, state) {
@@ -68,6 +69,15 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: AppColors.error,
+                action: state.retryable && state.workoutType != null
+                    ? SnackBarAction(
+                        label: 'Повторить',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          _generateWorkout(context, state.workoutType!);
+                        },
+                      )
+                    : null,
               ),
             );
           }
@@ -86,8 +96,12 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     );
   }
 
-  Widget _buildSessionRecoveryView(BuildContext context, WorkoutSessionRecovery state) {
-    final workoutLabel = WorkoutTypes.labels[state.workout.type] ?? state.workout.type;
+  Widget _buildSessionRecoveryView(
+    BuildContext context,
+    WorkoutSessionRecovery state,
+  ) {
+    final workoutLabel =
+        WorkoutTypes.labels[state.workout.type] ?? state.workout.type;
     final exercisesDone = state.exerciseIndex;
     final totalExercises = state.workout.totalExercises;
     final minutes = state.elapsedSeconds ~/ 60;
@@ -102,21 +116,14 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Colors.blue.shade50,
-                    Colors.indigo.shade50,
-                  ],
+                  colors: [Colors.blue.shade50, Colors.indigo.shade50],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.blue.shade100),
               ),
               child: Column(
                 children: [
-                  const Icon(
-                    Icons.restore,
-                    size: 56,
-                    color: Colors.indigo,
-                  ),
+                  const Icon(Icons.restore, size: 56, color: Colors.indigo),
                   const SizedBox(height: 16),
                   const Text(
                     'Незавершённая тренировка',
@@ -129,10 +136,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                   const SizedBox(height: 8),
                   Text(
                     'У вас есть сохранённая тренировка',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
                   // Workout info
@@ -159,7 +163,10 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                           children: [
                             _buildInfoChip(Icons.fitness_center, workoutLabel),
                             _buildInfoChip(Icons.timer, '$minutes мин'),
-                            _buildInfoChip(Icons.format_list_numbered, '$exercisesDone/$totalExercises'),
+                            _buildInfoChip(
+                              Icons.format_list_numbered,
+                              '$exercisesDone/$totalExercises',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -225,10 +232,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
         const SizedBox(height: 4),
         Text(
           text,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -243,18 +247,12 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           children: [
             const Text(
               'Какую тренировку хочешь сегодня?',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Выбери тип тренировки и AI создаст персональную программу',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 32),
             Expanded(
@@ -316,7 +314,11 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           children: [
             Row(
               children: [
-                Icon(Icons.offline_bolt, size: 20, color: AppColors.textSecondary),
+                Icon(
+                  Icons.offline_bolt,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Сохранённые тренировки',
@@ -386,10 +388,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              color.withValues(alpha: 0.8),
-              color,
-            ],
+            colors: [color.withValues(alpha: 0.8), color],
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
@@ -404,11 +403,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 40,
-              color: Colors.white,
-            ),
+            Icon(icon, size: 40, color: Colors.white),
             const SizedBox(height: 12),
             Text(
               label,
@@ -449,7 +444,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
       return;
     }
 
-    if (checkInState is! CheckInCompleted && checkInState is! CheckInAlreadyCompleted) {
+    if (checkInState is! CheckInCompleted &&
+        checkInState is! CheckInAlreadyCompleted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Сначала пройдите опрос самочувствия'),
@@ -460,8 +456,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
       return;
     }
 
-    final checkIn = checkInState is CheckInCompleted 
-        ? checkInState.checkIn 
+    final checkIn = checkInState is CheckInCompleted
+        ? checkInState.checkIn
         : (checkInState as CheckInAlreadyCompleted).checkIn;
 
     context.read<WorkoutCubit>().generateWorkout(
@@ -494,30 +490,20 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                       valueColor: AlwaysStoppedAnimation(AppColors.primary),
                     ),
                   ),
-                  Icon(
-                    Icons.psychology,
-                    size: 48,
-                    color: AppColors.primary,
-                  ),
+                  Icon(Icons.psychology, size: 48, color: AppColors.primary),
                 ],
               ),
             ),
             const SizedBox(height: 32),
             Text(
               'Создаём тренировку "$label"',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
               state.message,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 48),

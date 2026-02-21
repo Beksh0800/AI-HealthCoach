@@ -6,8 +6,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// Service for making AI requests via OpenRouter API
 /// OpenRouter provides access to many free and paid models
 class OpenRouterService {
-  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
- 
+  static const String _baseUrl =
+      'https://openrouter.ai/api/v1/chat/completions';
+  static const int _defaultMaxModelAttempts = 2;
+  static const int _defaultTimeoutSeconds = 22;
+  static const int _fastModeTimeoutSeconds = 16;
+
   // Stable defaults for paid OpenRouter accounts.
   static const String modelAutoRouter = 'openrouter/auto';
   static const String modelGpt4oMini = 'openai/gpt-4o-mini';
@@ -33,12 +37,21 @@ class OpenRouterService {
 
   String? _apiKey;
   late final List<String> _fallbackModels;
-  
+  late final bool _fastMode;
+  late final int _maxModelAttempts;
+  late final Duration _requestTimeout;
+
   OpenRouterService() {
     _initApiKey();
     _fallbackModels = _resolveFallbackModels();
+    _fastMode = _readBoolEnv('OPENROUTER_FAST_MODE');
+    _maxModelAttempts = _resolveMaxModelAttempts();
+    _requestTimeout = _resolveRequestTimeout();
+    debugPrint(
+      'OpenRouterService: fastMode=$_fastMode, maxAttempts=$_maxModelAttempts, timeout=${_requestTimeout.inSeconds}s',
+    );
   }
-  
+
   void _initApiKey() {
     try {
       if (dotenv.isInitialized) {
@@ -48,11 +61,27 @@ class OpenRouterService {
       debugPrint('OpenRouterService: Error accessing API key: $e');
     }
   }
-  
+
   /// Check if OpenRouter is configured
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
   List<String> _resolveFallbackModels() {
+    final base = _resolveModelsFromEnvOrDefault();
+    final preferredModel = _readStringEnv('OPENROUTER_FAST_MODEL');
+    if (preferredModel == null || preferredModel.isEmpty) {
+      return base;
+    }
+
+    final reordered = <String>[preferredModel];
+    for (final model in base) {
+      if (model != preferredModel) {
+        reordered.add(model);
+      }
+    }
+    return reordered;
+  }
+
+  List<String> _resolveModelsFromEnvOrDefault() {
     try {
       final raw = dotenv.env['OPENROUTER_MODELS'];
       if (raw != null && raw.trim().isNotEmpty) {
@@ -71,7 +100,46 @@ class OpenRouterService {
     }
     return _defaultFallbackModels;
   }
-  
+
+  int _resolveMaxModelAttempts() {
+    final envValue = _readIntEnv('OPENROUTER_MAX_MODEL_ATTEMPTS');
+    final defaultAttempts = _fastMode ? 1 : _defaultMaxModelAttempts;
+    final attempts = envValue ?? defaultAttempts;
+    return attempts.clamp(1, _fallbackModels.length);
+  }
+
+  Duration _resolveRequestTimeout() {
+    final envValue = _readIntEnv('OPENROUTER_TIMEOUT_SECONDS');
+    final defaultSeconds = _fastMode
+        ? _fastModeTimeoutSeconds
+        : _defaultTimeoutSeconds;
+    final seconds = (envValue ?? defaultSeconds).clamp(8, 90);
+    return Duration(seconds: seconds);
+  }
+
+  String? _readStringEnv(String key) {
+    try {
+      final value = dotenv.env[key];
+      if (value == null) return null;
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int? _readIntEnv(String key) {
+    final value = _readStringEnv(key);
+    if (value == null) return null;
+    return int.tryParse(value);
+  }
+
+  bool _readBoolEnv(String key) {
+    final value = _readStringEnv(key)?.toLowerCase();
+    if (value == null) return false;
+    return value == '1' || value == 'true' || value == 'yes' || value == 'on';
+  }
+
   /// Generate a completion with automatic fallback across multiple models
   /// Tries each model in [fallbackModels] until one succeeds
   Future<String?> generateCompletionWithFallback({
@@ -82,12 +150,16 @@ class OpenRouterService {
     double temperature = 0.7,
   }) async {
     if (!isConfigured) {
-      throw Exception('OpenRouter API не настроен. Добавьте OPENROUTER_API_KEY в .env');
+      throw Exception(
+        'OpenRouter API не настроен. Добавьте OPENROUTER_API_KEY в .env',
+      );
     }
-    
+
     Exception? lastError;
-    
-    for (final model in _fallbackModels) {
+
+    final modelsToTry = _fallbackModels.take(_maxModelAttempts).toList();
+
+    for (final model in modelsToTry) {
       try {
         debugPrint('OpenRouterService: Trying model $model');
         final result = await generateCompletion(
@@ -98,7 +170,7 @@ class OpenRouterService {
           maxTokens: maxTokens,
           temperature: temperature,
         );
-        
+
         if (result != null && result.isNotEmpty) {
           debugPrint('OpenRouterService: Success with model $model');
           return result;
@@ -109,11 +181,11 @@ class OpenRouterService {
         // Continue to next model
       }
     }
-    
+
     // All models failed
     throw lastError ?? Exception('All OpenRouter models failed');
   }
-  
+
   /// Generate a completion using OpenRouter API
   /// [prompt] - The text prompt to send
   /// [systemPrompt] - Optional system message defining AI persona
@@ -130,7 +202,9 @@ class OpenRouterService {
     double temperature = 0.7,
   }) async {
     if (!isConfigured) {
-      throw Exception('OpenRouter API не настроен. Добавьте OPENROUTER_API_KEY в .env');
+      throw Exception(
+        'OpenRouter API не настроен. Добавьте OPENROUTER_API_KEY в .env',
+      );
     }
 
     try {
@@ -140,22 +214,16 @@ class OpenRouterService {
         'HTTP-Referer': 'https://ai-health-coach.app',
         'X-Title': 'AI Health Coach',
       };
-      
+
       final messages = <Map<String, String>>[];
-      
+
       // Add system prompt if provided
       if (systemPrompt != null && systemPrompt.isNotEmpty) {
-        messages.add({
-          'role': 'system',
-          'content': systemPrompt,
-        });
+        messages.add({'role': 'system', 'content': systemPrompt});
       }
-      
-      messages.add({
-        'role': 'user',
-        'content': prompt,
-      });
-      
+
+      messages.add({'role': 'user', 'content': prompt});
+
       final body = <String, dynamic>{
         'model': model,
         'messages': messages,
@@ -219,17 +287,13 @@ class OpenRouterService {
     required Map<String, dynamic> body,
   }) {
     return http
-        .post(
-          Uri.parse(_baseUrl),
-          headers: headers,
-          body: jsonEncode(body),
-        )
+        .post(Uri.parse(_baseUrl), headers: headers, body: jsonEncode(body))
         .timeout(
-          const Duration(seconds: 45),
+          _requestTimeout,
           onTimeout: () => throw Exception('OpenRouter request timed out'),
         );
   }
-  
+
   /// Generate text completion (non-JSON)
   Future<String?> generateText({
     required String prompt,
@@ -245,7 +309,7 @@ class OpenRouterService {
       temperature: temperature,
     );
   }
-  
+
   /// Generate JSON completion
   Future<Map<String, dynamic>?> generateJson({
     required String prompt,
@@ -260,9 +324,9 @@ class OpenRouterService {
       maxTokens: maxTokens,
       temperature: temperature,
     );
-    
+
     if (response == null) return null;
-    
+
     // Clean and parse JSON
     String cleanedText = response.trim();
     if (cleanedText.startsWith('```json')) {
@@ -275,7 +339,7 @@ class OpenRouterService {
       cleanedText = cleanedText.substring(0, cleanedText.length - 3);
     }
     cleanedText = cleanedText.trim();
-    
+
     return jsonDecode(cleanedText) as Map<String, dynamic>;
   }
 }

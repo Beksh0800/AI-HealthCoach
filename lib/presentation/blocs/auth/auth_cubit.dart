@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/errors/error_mapper.dart';
 import '../../../domain/repositories/i_user_repository.dart';
 
 part 'auth_state.dart';
@@ -14,25 +15,38 @@ class AuthCubit extends Cubit<AuthState> {
   AuthCubit({
     required FirebaseAuth auth,
     required IUserRepository userRepository,
-  })  : _auth = auth,
-        _userRepository = userRepository,
-        super(const AuthInitial());
+  }) : _auth = auth,
+       _userRepository = userRepository,
+       super(const AuthInitial());
 
   /// Check current authentication status
   Future<void> checkAuthStatus() async {
     emit(const AuthLoading());
 
     final user = _auth.currentUser;
-    if (user != null) {
-      // Check if user has completed onboarding
-      final hasProfile = await _userRepository.hasUserProfile(user.uid);
-      emit(AuthAuthenticated(
-        uid: user.uid,
-        email: user.email,
-        hasCompletedOnboarding: hasProfile,
-      ));
-    } else {
+    if (user == null) {
       emit(const AuthUnauthenticated());
+      return;
+    }
+
+    try {
+      final hasProfile = await _userRepository.hasUserProfile(user.uid);
+      emit(
+        AuthAuthenticated(
+          uid: user.uid,
+          email: user.email,
+          hasCompletedOnboarding: hasProfile,
+        ),
+      );
+    } catch (e) {
+      emit(
+        AuthError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage: 'Не удалось проверить статус авторизации',
+          ),
+        ),
+      );
     }
   }
 
@@ -50,19 +64,30 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (credential.user != null) {
-        final hasProfile = await _userRepository.hasUserProfile(credential.user!.uid);
-        emit(AuthAuthenticated(
-          uid: credential.user!.uid,
-          email: credential.user!.email,
-          hasCompletedOnboarding: hasProfile,
-        ));
+        final hasProfile = await _userRepository.hasUserProfile(
+          credential.user!.uid,
+        );
+        emit(
+          AuthAuthenticated(
+            uid: credential.user!.uid,
+            email: credential.user!.email,
+            hasCompletedOnboarding: hasProfile,
+          ),
+        );
       } else {
         emit(const AuthError('Не удалось войти'));
       }
     } on FirebaseAuthException catch (e) {
       emit(AuthError(_getErrorMessage(e.code)));
     } catch (e) {
-      emit(AuthError('Произошла ошибка: $e'));
+      emit(
+        AuthError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage: 'Не удалось выполнить вход. Попробуйте позже.',
+          ),
+        ),
+      );
     }
   }
 
@@ -80,18 +105,27 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (credential.user != null) {
-        emit(AuthAuthenticated(
-          uid: credential.user!.uid,
-          email: credential.user!.email,
-          hasCompletedOnboarding: false,
-        ));
+        emit(
+          AuthAuthenticated(
+            uid: credential.user!.uid,
+            email: credential.user!.email,
+            hasCompletedOnboarding: false,
+          ),
+        );
       } else {
         emit(const AuthError('Не удалось зарегистрироваться'));
       }
     } on FirebaseAuthException catch (e) {
       emit(AuthError(_getErrorMessage(e.code)));
     } catch (e) {
-      emit(AuthError('Произошла ошибка: $e'));
+      emit(
+        AuthError(
+          ErrorMapper.toMessage(
+            e,
+            fallbackMessage: 'Не удалось зарегистрироваться. Попробуйте позже.',
+          ),
+        ),
+      );
     }
   }
 
@@ -106,11 +140,13 @@ class AuthCubit extends Cubit<AuthState> {
   void markOnboardingCompleted() {
     final currentState = state;
     if (currentState is AuthAuthenticated) {
-      emit(AuthAuthenticated(
-        uid: currentState.uid,
-        email: currentState.email,
-        hasCompletedOnboarding: true,
-      ));
+      emit(
+        AuthAuthenticated(
+          uid: currentState.uid,
+          email: currentState.email,
+          hasCompletedOnboarding: true,
+        ),
+      );
     }
   }
 
@@ -131,6 +167,12 @@ class AuthCubit extends Cubit<AuthState> {
         return 'Аккаунт заблокирован';
       case 'too-many-requests':
         return 'Слишком много попыток. Попробуйте позже';
+      case 'network-request-failed':
+        return 'Нет подключения к интернету';
+      case 'invalid-credential':
+        return 'Неверный логин или пароль';
+      case 'operation-not-allowed':
+        return 'Метод входа недоступен. Обратитесь к поддержке';
       default:
         return 'Ошибка авторизации: $code';
     }

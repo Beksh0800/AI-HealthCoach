@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'dart:math' as math;
 
 import '../../../core/di/injection_container.dart';
 import '../../../core/theme/app_colors.dart';
@@ -222,8 +221,8 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
 
   Widget _buildBarChart(List<double> data, {required bool isWeekly}) {
     final maxY = data.fold(0.0, (prev, curr) => curr > prev ? curr : prev);
-    final roundedMax = maxY > 0 ? (maxY * 1.2).ceilToDouble() : 60;
-    final yInterval = math.max(1.0, (roundedMax / 4).ceilToDouble());
+    final roundedMax = maxY > 0 ? _roundUpYAxis(maxY * 1.2) : 2.0;
+    final yInterval = _resolveYAxisInterval(roundedMax);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -351,16 +350,10 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
 
   Widget _buildLineChart(List<double> data) {
     final maxY = data.fold(0.0, (prev, curr) => curr > prev ? curr : prev);
-    final roundedMax = maxY > 0 ? (maxY * 1.2).ceilToDouble() : 60;
-    final yInterval = math.max(1.0, (roundedMax / 4).ceilToDouble());
+    final roundedMax = maxY > 0 ? _roundUpYAxis(maxY * 1.2) : 2.0;
+    final yInterval = _resolveYAxisInterval(roundedMax);
     final lastIndex = data.isEmpty ? 0 : data.length - 1;
-    final labelIndexes = <int>{
-      0,
-      if (lastIndex >= 7) 7,
-      if (lastIndex >= 14) 14,
-      if (lastIndex >= 21) 21,
-      lastIndex,
-    };
+    final labelIndexes = _buildXAxisLabelIndexes(lastIndex, desiredCount: 4);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -375,17 +368,27 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
         LineChartData(
           minX: 0,
           maxX: lastIndex.toDouble(),
-          maxY: roundedMax.toDouble(),
+          maxY: roundedMax,
           minY: 0,
           clipData: const FlClipData.all(),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
+              tooltipMargin: 8,
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
+              tooltipBorderRadius: BorderRadius.circular(10),
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+              showOnTopOfTheChartBoxArea: true,
               getTooltipItems: (spots) {
                 return spots.map((spot) {
-                  final daysAgo = lastIndex - spot.x.toInt();
-                  final date = DateTime.now().subtract(Duration(days: daysAgo));
+                  final index = spot.x.round().clamp(0, lastIndex);
+                  final daysAgo = lastIndex - index;
+                  final date = _todayDate().subtract(Duration(days: daysAgo));
                   return LineTooltipItem(
-                    '${DateFormat('d MMM', 'ru').format(date)}\n${spot.y.toInt()} мин',
+                    '${DateFormat('dd.MM').format(date)}\n${_formatYAxisValue(spot.y)} мин',
                     const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -406,14 +409,14 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 28,
+                reservedSize: 32,
                 interval: yInterval,
                 getTitlesWidget: (value, meta) {
                   if (value < 0) {
                     return const SizedBox.shrink();
                   }
                   return Text(
-                    value.toInt().toString(),
+                    _formatYAxisValue(value),
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 10,
@@ -425,26 +428,30 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 22,
+                reservedSize: 26,
                 interval: 1,
                 minIncluded: false,
                 maxIncluded: false,
                 getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
+                  final index = value.round();
                   if (index >= 0 &&
                       index <= lastIndex &&
                       labelIndexes.contains(index)) {
                     final daysAgo = lastIndex - index;
-                    final date = DateTime.now().subtract(
-                      Duration(days: daysAgo),
-                    );
+                    final date = _todayDate().subtract(Duration(days: daysAgo));
+                    final isTodayLabel = index == lastIndex;
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        DateFormat('d/M').format(date),
+                        DateFormat('dd.MM').format(date),
                         style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 9,
+                          color: isTodayLabel
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontSize: 10,
+                          fontWeight: isTodayLabel
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     );
@@ -473,13 +480,20 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                     (e) => FlSpot(e.key.toDouble(), e.value < 0 ? 0 : e.value),
                   )
                   .toList(),
-              isCurved: true,
-              preventCurveOverShooting: true,
-              preventCurveOvershootingThreshold: 10,
-              curveSmoothness: 0.3,
+              isCurved: false,
               color: AppColors.primary,
               barWidth: 3,
-              dotData: const FlDotData(show: false),
+              dotData: FlDotData(
+                show: true,
+                checkToShowDot: (spot, _) => spot.y > 0,
+                getDotPainter: (spot, percent, barData, index) =>
+                    FlDotCirclePainter(
+                      radius: 3.5,
+                      color: AppColors.primary,
+                      strokeWidth: 1.5,
+                      strokeColor: Colors.white,
+                    ),
+              ),
               belowBarData: BarAreaData(
                 show: true,
                 gradient: LinearGradient(
@@ -498,7 +512,6 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
       ),
     );
   }
-
   // ────────────────────── Pie Chart (Type Distribution) ──────────────────────
 
   Widget _buildTypeDistributionChart(
@@ -686,9 +699,53 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
 
   // ────────────────────── Helpers ──────────────────────
 
-  String _getDayLabel(int index) {
+  DateTime _todayDate() {
     final now = DateTime.now();
-    final date = now.subtract(Duration(days: 6 - index));
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  Set<int> _buildXAxisLabelIndexes(int lastIndex, {int desiredCount = 4}) {
+    if (lastIndex <= 0) {
+      return {0};
+    }
+
+    final result = <int>{0, lastIndex};
+    if (desiredCount > 2) {
+      for (var i = 1; i < desiredCount - 1; i++) {
+        final candidate = ((lastIndex * i) / (desiredCount - 1)).round();
+        result.add(candidate.clamp(0, lastIndex).toInt());
+      }
+    }
+    return result;
+  }
+
+  double _roundUpYAxis(double value) {
+    if (value <= 2) return 2;
+    if (value <= 5) return 5;
+    if (value <= 10) return 10;
+    if (value <= 20) return 20;
+    if (value <= 30) return 30;
+    return (value / 10).ceil() * 10.0;
+  }
+
+  double _resolveYAxisInterval(double maxY) {
+    if (maxY <= 2) return 0.5;
+    if (maxY <= 10) return 1;
+    if (maxY <= 20) return 2;
+    if (maxY <= 30) return 5;
+    return 10;
+  }
+
+  String _formatYAxisValue(double value) {
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() < 0.001) {
+      return rounded.toInt().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  String _getDayLabel(int index) {
+    final date = _todayDate().subtract(Duration(days: 6 - index));
     return DateFormat('E', 'ru').format(date);
   }
 

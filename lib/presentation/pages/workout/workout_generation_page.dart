@@ -456,7 +456,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           backgroundColor: AppColors.warning,
         ),
       );
-      context.go(AppRoutes.checkIn);
+      context.go(AppRoutes.checkIn, extra: workoutType);
       return;
     }
 

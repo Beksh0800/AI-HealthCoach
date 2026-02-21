@@ -45,7 +45,9 @@ class WorkoutHistory {
       intensity: map['intensity'] ?? 'moderate',
       durationSeconds: map['duration_seconds']?.toInt() ?? 0,
       exercisesCompleted: map['exercises_completed']?.toInt() ?? 0,
-      completedAt: (map['completed_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      completedAt:
+          ((map['completed_at'] as Timestamp?)?.toDate() ?? DateTime.now())
+              .toLocal(),
     );
   }
 }

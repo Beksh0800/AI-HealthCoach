@@ -50,9 +50,7 @@ class WorkoutPlayerPage extends StatelessWidget {
         // Fallback - shouldn't happen
         return Scaffold(
           appBar: AppBar(title: const Text('Тренировка')),
-          body: const Center(
-            child: Text('Тренировка не найдена'),
-          ),
+          body: const Center(child: Text('Тренировка не найдена')),
         );
       },
     );
@@ -149,11 +147,23 @@ class WorkoutPlayerPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildExerciseSection('Разминка', workout.warmup, Icons.wb_sunny),
+                      _buildExerciseSection(
+                        'Разминка',
+                        workout.warmup,
+                        Icons.wb_sunny,
+                      ),
                       const SizedBox(height: 16),
-                      _buildExerciseSection('Основная часть', workout.mainExercises, Icons.fitness_center),
+                      _buildExerciseSection(
+                        'Основная часть',
+                        workout.mainExercises,
+                        Icons.fitness_center,
+                      ),
                       const SizedBox(height: 16),
-                      _buildExerciseSection('Заминка', workout.cooldown, Icons.nightlight),
+                      _buildExerciseSection(
+                        'Заминка',
+                        workout.cooldown,
+                        Icons.nightlight,
+                      ),
                     ],
                   ),
                 ),
@@ -178,7 +188,11 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildExerciseSection(String title, List<WorkoutExercise> exercises, IconData icon) {
+  Widget _buildExerciseSection(
+    String title,
+    List<WorkoutExercise> exercises,
+    IconData icon,
+  ) {
     if (exercises.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -190,10 +204,7 @@ class WorkoutPlayerPage extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '$title (${exercises.length})',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -231,44 +242,45 @@ class WorkoutPlayerPage extends StatelessWidget {
     final isResting = state.isResting;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F5F7),
       appBar: AppBar(
-        title: Text('${state.currentExerciseIndex + 1}/${state.totalExercises}'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          exercise.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => _showExitConfirmation(context),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                _formatTime(state.elapsedSeconds),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'skip') {
+                context.read<WorkoutCubit>().skipExercise();
+              } else if (value == 'exit') {
+                _showExitConfirmation(context);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'skip',
+                child: Text('Пропустить упражнение'),
               ),
-            ),
+              PopupMenuItem(value: 'exit', child: Text('Завершить тренировку')),
+            ],
+            icon: const Icon(Icons.more_vert),
           ),
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Progress indicator
-            LinearProgressIndicator(
-              value: state.progress,
-              backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation(AppColors.primary),
-            ),
-
-            Expanded(
-              child: isResting
-                  ? _buildRestView(context, exercise)
-                  : _buildExerciseView(context, state, exercise),
-            ),
-          ],
-        ),
+        child: isResting
+            ? _buildRestView(context, exercise)
+            : _buildExerciseView(context, state, exercise),
       ),
     );
   }
@@ -278,234 +290,428 @@ class WorkoutPlayerPage extends StatelessWidget {
     WorkoutInProgress state,
     WorkoutExercise exercise,
   ) {
-    final resolvedVideo = _resolveExerciseVideo(exercise);
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // Exercise info
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Exercise image or icon
-                  _buildExerciseImage(context, exercise),
-                  const SizedBox(height: 24),
-
-                  Text(
-                    exercise.name,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Подход ${state.currentSet}/${exercise.sets} • ${exercise.displayFormat.split('x').last.trim()}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Text(
-                    exercise.description,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (resolvedVideo.kind != ExerciseVideoKind.unsupported) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => _openVideoByKind(
-                        context,
-                        exercise,
-                        resolvedVideo,
-                      ),
-                      icon: Icon(
-                        resolvedVideo.kind == ExerciseVideoKind.youtubeSearch
-                            ? Icons.travel_explore
-                            : Icons.play_circle_outline,
-                      ),
-                      label: Text(
-                        resolvedVideo.kind == ExerciseVideoKind.youtubeSearch
-                            ? 'Открыть поиск'
-                            : 'Смотреть видео',
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-
-                  // Instructions
-                  if (exercise.instructions.isNotEmpty) ...[
-                    const Text(
-                      'Инструкция:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...exercise.instructions.asMap().entries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${entry.key + 1}. ',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(entry.value),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ],
-              ),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _buildExerciseImage(context, exercise),
+                ),
+                const SizedBox(height: 10),
+                _buildLiveStatsRow(state, exercise),
+                const SizedBox(height: 10),
+                _buildAiInsightCard(exercise),
+              ],
             ),
           ),
-
-          // Pain button
-          SizedBox(
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => context.read<WorkoutCubit>().reportPain(),
-              icon: const Icon(Icons.warning_amber, color: Colors.white),
+              icon: const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.white,
+              ),
               label: const Text(
-                'МНЕ БОЛЬНО',
+                'Боль / Дискомфорт',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
+                backgroundColor: const Color(0xFFF44336),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                elevation: 4,
-                shadowColor: AppColors.error.withValues(alpha: 0.4),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Action buttons
-          Row(
+        ),
+        Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
             children: [
-              if (state.currentExerciseIndex > 0)
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => context.read<WorkoutCubit>().previousExercise(),
-                    child: const Text('Назад'),
+              Row(
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: state.currentExerciseIndex > 0
+                        ? () => context.read<WorkoutCubit>().previousExercise()
+                        : null,
+                    icon: const Icon(Icons.skip_previous_rounded),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      if (state.isPaused) {
+                        context.read<WorkoutCubit>().resumeWorkout();
+                      } else {
+                        context.read<WorkoutCubit>().pauseWorkout();
+                      }
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                      ),
+                      child: Icon(
+                        state.isPaused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: () => context.read<WorkoutCubit>().completeSet(),
+                    icon: const Icon(Icons.skip_next_rounded),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Упражнение ${state.currentExerciseIndex + 1} из ${state.totalExercises}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: state.progress,
+                  backgroundColor: AppColors.primaryLight.withValues(
+                    alpha: 0.25,
+                  ),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRestView(BuildContext context, WorkoutExercise exercise) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.pause_circle_filled,
+              size: 74,
+              color: AppColors.primary,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Отдых',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${exercise.restSeconds} сек',
+              style: const TextStyle(
+                fontSize: 20,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Следующий подход: ${exercise.name}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => context.read<WorkoutCubit>().finishRest(),
+                child: const Text('Продолжить'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveStatsRow(WorkoutInProgress state, WorkoutExercise exercise) {
+    final timeParts = _formatTime(state.elapsedSeconds).split(':');
+    final minutes = timeParts.first;
+    final seconds = timeParts.last;
+    final reps = _extractRepCount(exercise);
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(child: _buildLiveStatCell(minutes, 'МИНУТЫ')),
+                Container(
+                  width: 1,
+                  height: 42,
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+                Expanded(child: _buildLiveStatCell(seconds, 'СЕКУНДЫ')),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Column(
+              children: [
+                const Text(
+                  'ПОВТОРОВ',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              if (state.currentExerciseIndex > 0) const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: () => context.read<WorkoutCubit>().completeSet(),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                const SizedBox(height: 4),
+                Text(
+                  reps,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
                   ),
-                  child: Text(
-                    state.isLastSet && state.isLastExercise
-                        ? 'Завершить'
-                        : state.isLastSet
-                            ? 'Следующее'
-                            : 'Готово',
-                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLiveStatCell(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAiInsightCard(WorkoutExercise exercise) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                size: 14,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'AI INSIGHT',
+                style: TextStyle(
+                  color: AppColors.textSecondary.withValues(alpha: 0.9),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => context.read<WorkoutCubit>().skipExercise(),
-            child: const Text('Пропустить упражнение'),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Заметка врача ИИ',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      exercise.description,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 34),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Понятно',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              _buildInsightThumbnail(exercise),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRestView(BuildContext context, WorkoutExercise exercise) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.pause_circle_filled,
-            size: 80,
-            color: AppColors.secondary,
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Отдых',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${exercise.restSeconds} секунд',
-            style: TextStyle(
-              fontSize: 20,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Следующий подход: ${exercise.name}',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 48),
-          ElevatedButton(
-            onPressed: () => context.read<WorkoutCubit>().finishRest(),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-            ),
-            child: const Text('Продолжить'),
-          ),
-        ],
+  Widget _buildInsightThumbnail(WorkoutExercise exercise) {
+    final imageUrl = exercise.imageUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imageUrl,
+          width: 74,
+          height: 74,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildInsightPlaceholder(),
+        ),
+      );
+    }
+    return _buildInsightPlaceholder();
+  }
+
+  Widget _buildInsightPlaceholder() {
+    return Container(
+      width: 74,
+      height: 74,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.medical_information_outlined,
+        color: AppColors.primary,
       ),
     );
+  }
+
+  String _extractRepCount(WorkoutExercise exercise) {
+    final matches = RegExp(r'\d+')
+        .allMatches(exercise.displayFormat)
+        .map((m) => m.group(0))
+        .whereType<String>()
+        .toList();
+    if (matches.length >= 2) return matches.last;
+    if (matches.isNotEmpty) return matches.first;
+    return exercise.sets.toString();
   }
 
   // === Pain and replacement states ===
 
-  Widget _buildPainReportedView(BuildContext context, WorkoutPainReported state) {
+  Widget _buildPainReportedView(
+    BuildContext context,
+    WorkoutPainReported state,
+  ) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_getPainStepTitle(state.step)),
@@ -540,7 +746,10 @@ class WorkoutPlayerPage extends StatelessWidget {
     }
   }
 
-  Widget _buildPainStepContent(BuildContext context, WorkoutPainReported state) {
+  Widget _buildPainStepContent(
+    BuildContext context,
+    WorkoutPainReported state,
+  ) {
     switch (state.step) {
       case PainFlowStep.location:
         return _buildLocationStep(context, state);
@@ -556,27 +765,17 @@ class WorkoutPlayerPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Icon(
-          Icons.health_and_safety,
-          size: 80,
-          color: AppColors.warning,
-        ),
+        const Icon(Icons.health_and_safety, size: 80, color: AppColors.warning),
         const SizedBox(height: 24),
         const Text(
           'Выберите область боли',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           'Текущее упражнение: ${state.currentExercise.name}',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -587,14 +786,34 @@ class WorkoutPlayerPage extends StatelessWidget {
             crossAxisSpacing: 12,
             childAspectRatio: 2.5,
             children: [
-              _buildPainLocationButton(context, 'Спина (поясница)', Icons.airline_seat_flat),
-              _buildPainLocationButton(context, 'Спина (верх)', Icons.accessibility),
+              _buildPainLocationButton(
+                context,
+                'Спина (поясница)',
+                Icons.airline_seat_flat,
+              ),
+              _buildPainLocationButton(
+                context,
+                'Спина (верх)',
+                Icons.accessibility,
+              ),
               _buildPainLocationButton(context, 'Шея', Icons.face),
-              _buildPainLocationButton(context, 'Колени', Icons.directions_walk),
+              _buildPainLocationButton(
+                context,
+                'Колени',
+                Icons.directions_walk,
+              ),
               _buildPainLocationButton(context, 'Плечи', Icons.fitness_center),
               _buildPainLocationButton(context, 'Запястья', Icons.pan_tool),
-              _buildPainLocationButton(context, 'Голеностоп', Icons.directions_run),
-              _buildPainLocationButton(context, 'Таз/бедра', Icons.airline_seat_legroom_extra),
+              _buildPainLocationButton(
+                context,
+                'Голеностоп',
+                Icons.directions_run,
+              ),
+              _buildPainLocationButton(
+                context,
+                'Таз/бедра',
+                Icons.airline_seat_legroom_extra,
+              ),
             ],
           ),
         ),
@@ -613,36 +832,100 @@ class WorkoutPlayerPage extends StatelessWidget {
       children: [
         Text(
           'Область: ${state.painLocation}',
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 24),
         const Text(
           'Оцените интенсивность боли',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
         Expanded(
           child: ListView(
             children: [
-              _buildIntensityOption(context, 1, '😊', 'Лёгкий дискомфорт', 'Почти не мешает', Colors.green),
-              _buildIntensityOption(context, 2, '🙂', 'Слабая боль', 'Терпимо', Colors.green),
-              _buildIntensityOption(context, 3, '😐', 'Небольшая боль', 'Заметно, но можно продолжать', Colors.green),
+              _buildIntensityOption(
+                context,
+                1,
+                '😊',
+                'Лёгкий дискомфорт',
+                'Почти не мешает',
+                Colors.green,
+              ),
+              _buildIntensityOption(
+                context,
+                2,
+                '🙂',
+                'Слабая боль',
+                'Терпимо',
+                Colors.green,
+              ),
+              _buildIntensityOption(
+                context,
+                3,
+                '😐',
+                'Небольшая боль',
+                'Заметно, но можно продолжать',
+                Colors.green,
+              ),
               const Divider(height: 24),
-              _buildIntensityOption(context, 4, '😕', 'Умеренная боль', 'Мешает концентрации', Colors.orange),
-              _buildIntensityOption(context, 5, '😟', 'Средняя боль', 'Нужно изменить технику', Colors.orange),
-              _buildIntensityOption(context, 6, '😣', 'Заметная боль', 'Сложно продолжать', Colors.orange),
+              _buildIntensityOption(
+                context,
+                4,
+                '😕',
+                'Умеренная боль',
+                'Мешает концентрации',
+                Colors.orange,
+              ),
+              _buildIntensityOption(
+                context,
+                5,
+                '😟',
+                'Средняя боль',
+                'Нужно изменить технику',
+                Colors.orange,
+              ),
+              _buildIntensityOption(
+                context,
+                6,
+                '😣',
+                'Заметная боль',
+                'Сложно продолжать',
+                Colors.orange,
+              ),
               const Divider(height: 24),
-              _buildIntensityOption(context, 7, '😖', 'Сильная боль', 'Требуется перерыв', Colors.red),
-              _buildIntensityOption(context, 8, '😫', 'Очень сильная', 'Лучше остановиться', Colors.red),
-              _buildIntensityOption(context, 9, '🤕', 'Острая боль', 'Нужен отдых', Colors.red),
-              _buildIntensityOption(context, 10, '🚨', 'Невыносимая', 'Необходим врач', Colors.red.shade900),
+              _buildIntensityOption(
+                context,
+                7,
+                '😖',
+                'Сильная боль',
+                'Требуется перерыв',
+                Colors.red,
+              ),
+              _buildIntensityOption(
+                context,
+                8,
+                '😫',
+                'Очень сильная',
+                'Лучше остановиться',
+                Colors.red,
+              ),
+              _buildIntensityOption(
+                context,
+                9,
+                '🤕',
+                'Острая боль',
+                'Нужен отдых',
+                Colors.red,
+              ),
+              _buildIntensityOption(
+                context,
+                10,
+                '🚨',
+                'Невыносимая',
+                'Необходим врач',
+                Colors.red.shade900,
+              ),
             ],
           ),
         ),
@@ -650,7 +933,14 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildIntensityOption(BuildContext context, int level, String emoji, String title, String subtitle, Color color) {
+  Widget _buildIntensityOption(
+    BuildContext context,
+    int level,
+    String emoji,
+    String title,
+    String subtitle,
+    Color color,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -675,7 +965,10 @@ class WorkoutPlayerPage extends StatelessWidget {
               ),
               child: Text(
                 '$level',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -692,26 +985,20 @@ class WorkoutPlayerPage extends StatelessWidget {
   // Step 3: Action selection
   Widget _buildActionStep(BuildContext context, WorkoutPainReported state) {
     final category = state.painCategory;
-    
+
     return Column(
       children: [
         _buildPainSummaryCard(state),
         const SizedBox(height: 24),
         Text(
           _getActionTitle(category),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           _getActionSubtitle(category),
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -763,34 +1050,50 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   Color _getPainColor(String category) {
     switch (category) {
-      case 'light': return Colors.green;
-      case 'moderate': return Colors.orange;
-      case 'severe': return Colors.red;
-      default: return AppColors.textSecondary;
+      case 'light':
+        return Colors.green;
+      case 'moderate':
+        return Colors.orange;
+      case 'severe':
+        return Colors.red;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
   String _getActionTitle(String category) {
     switch (category) {
-      case 'light': return 'Что вы хотите сделать?';
-      case 'moderate': return 'Рекомендуем осторожность';
-      case 'severe': return '⚠️ Требуется отдых';
-      default: return 'Выберите действие';
+      case 'light':
+        return 'Что вы хотите сделать?';
+      case 'moderate':
+        return 'Рекомендуем осторожность';
+      case 'severe':
+        return '⚠️ Требуется отдых';
+      default:
+        return 'Выберите действие';
     }
   }
 
   String _getActionSubtitle(String category) {
     switch (category) {
-      case 'light': return 'Лёгкий дискомфорт — можно продолжить';
-      case 'moderate': return 'Рекомендуем заменить упражнение или отдохнуть';
-      case 'severe': return 'При сильной боли лучше прекратить или отдохнуть';
-      default: return '';
+      case 'light':
+        return 'Лёгкий дискомфорт — можно продолжить';
+      case 'moderate':
+        return 'Рекомендуем заменить упражнение или отдохнуть';
+      case 'severe':
+        return 'При сильной боли лучше прекратить или отдохнуть';
+      default:
+        return '';
     }
   }
 
-  List<Widget> _buildActionOptions(BuildContext context, WorkoutPainReported state, String category) {
+  List<Widget> _buildActionOptions(
+    BuildContext context,
+    WorkoutPainReported state,
+    String category,
+  ) {
     final cubit = context.read<WorkoutCubit>();
-    
+
     switch (category) {
       case 'light':
         return [
@@ -914,9 +1217,14 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPainLocationButton(BuildContext context, String location, IconData icon) {
+  Widget _buildPainLocationButton(
+    BuildContext context,
+    String location,
+    IconData icon,
+  ) {
     return OutlinedButton.icon(
-      onPressed: () => context.read<WorkoutCubit>().selectPainLocation(location),
+      onPressed: () =>
+          context.read<WorkoutCubit>().selectPainLocation(location),
       icon: Icon(icon, size: 20),
       label: Text(
         location,
@@ -959,7 +1267,9 @@ class WorkoutPlayerPage extends StatelessWidget {
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 12,
-                      backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                      backgroundColor: AppColors.primaryLight.withValues(
+                        alpha: 0.2,
+                      ),
                       valueColor: AlwaysStoppedAnimation(AppColors.primary),
                     ),
                   ),
@@ -984,7 +1294,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 48),
-              
+
               // Rest tips
               Container(
                 padding: const EdgeInsets.all(16),
@@ -994,7 +1304,10 @@ class WorkoutPlayerPage extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.lightbulb_outline, color: AppColors.primary),
+                    const Icon(
+                      Icons.lightbulb_outline,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(height: 8),
                     const Text(
                       'Советы для отдыха:',
@@ -1010,12 +1323,13 @@ class WorkoutPlayerPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 48),
-              
+
               // Continue button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => context.read<WorkoutCubit>().finishPainRest(),
+                  onPressed: () =>
+                      context.read<WorkoutCubit>().finishPainRest(),
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('Продолжить раньше'),
                   style: ElevatedButton.styleFrom(
@@ -1025,7 +1339,8 @@ class WorkoutPlayerPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => context.read<WorkoutCubit>().endWorkoutDueToPain(),
+                onPressed: () =>
+                    context.read<WorkoutCubit>().endWorkoutDueToPain(),
                 child: const Text('Закончить тренировку'),
               ),
             ],
@@ -1045,11 +1360,12 @@ class WorkoutPlayerPage extends StatelessWidget {
     }
   }
 
-  Widget _buildReplacingView(BuildContext context, WorkoutExerciseReplacing state) {
+  Widget _buildReplacingView(
+    BuildContext context,
+    WorkoutExerciseReplacing state,
+  ) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Подбор альтернативы'),
-      ),
+      appBar: AppBar(title: const Text('Подбор альтернативы')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -1070,39 +1386,26 @@ class WorkoutPlayerPage extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation(AppColors.primary),
                       ),
                     ),
-                    Icon(
-                      Icons.psychology,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                    Icon(Icons.psychology, size: 48, color: AppColors.primary),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
               const Text(
                 'AI подбирает безопасную замену',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
                 state.message,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Область боли: ${state.painLocation}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -1116,20 +1419,14 @@ class WorkoutPlayerPage extends StatelessWidget {
     if (resolvedVideo.kind != ExerciseVideoKind.unsupported) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          width: 240,
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
           child: ExerciseVideoPlayer(
             resolvedVideo: resolvedVideo,
-            onFullscreenTap: () => _openFullscreenVideo(
-              context,
-              exercise.name,
-              resolvedVideo,
-            ),
-            onOpenSearchTap: () => _openSearchVideo(
-              context,
-              exercise.name,
-              resolvedVideo,
-            ),
+            onFullscreenTap: () =>
+                _openFullscreenVideo(context, exercise.name, resolvedVideo),
+            onOpenSearchTap: () =>
+                _openSearchVideo(context, exercise.name, resolvedVideo),
           ),
         ),
       );
@@ -1141,14 +1438,14 @@ class WorkoutPlayerPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Image.network(
           imageUrl,
-          width: 200,
-          height: 150,
+          width: double.infinity,
+          height: 190,
           fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return Container(
-              width: 200,
-              height: 150,
+              width: double.infinity,
+              height: 190,
               decoration: BoxDecoration(
                 color: AppColors.primaryLight.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(16),
@@ -1157,7 +1454,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 child: CircularProgressIndicator(
                   value: loadingProgress.expectedTotalBytes != null
                       ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                            loadingProgress.expectedTotalBytes!
                       : null,
                 ),
               ),
@@ -1184,18 +1481,6 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   ResolvedExerciseVideo _resolveExerciseVideo(WorkoutExercise exercise) {
     return ExerciseVideoResolver.resolve(exercise.videoUrl, exercise.mediaType);
-  }
-
-  void _openVideoByKind(
-    BuildContext context,
-    WorkoutExercise exercise,
-    ResolvedExerciseVideo resolvedVideo,
-  ) {
-    if (resolvedVideo.kind == ExerciseVideoKind.youtubeSearch) {
-      _openSearchVideo(context, exercise.name, resolvedVideo);
-      return;
-    }
-    _openFullscreenVideo(context, exercise.name, resolvedVideo);
   }
 
   void _openFullscreenVideo(
@@ -1231,10 +1516,8 @@ class WorkoutPlayerPage extends StatelessWidget {
     }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ExerciseSearchWebViewPage(
-          url: url,
-          title: exerciseTitle,
-        ),
+        builder: (_) =>
+            ExerciseSearchWebViewPage(url: url, title: exerciseTitle),
       ),
     );
   }
@@ -1245,18 +1528,15 @@ class WorkoutPlayerPage extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      width: 160,
-      height: 160,
+      width: double.infinity,
+      height: 190,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.25),
-            color.withValues(alpha: 0.1),
-          ],
+          colors: [color.withValues(alpha: 0.25), color.withValues(alpha: 0.1)],
         ),
-        borderRadius: BorderRadius.circular(80),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.5), width: 3),
       ),
       child: Column(
@@ -1280,24 +1560,18 @@ class WorkoutPlayerPage extends StatelessWidget {
   Widget _buildPlaceholderImage(WorkoutExercise exercise) {
     final icon = _getExerciseIcon(exercise);
     final color = _getExerciseColor(exercise);
-    
+
     return Container(
-      width: 160,
-      height: 160,
+      width: double.infinity,
+      height: 190,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.3),
-            color.withValues(alpha: 0.1),
-          ],
+          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
         ),
-        borderRadius: BorderRadius.circular(80),
-        border: Border.all(
-          color: color.withValues(alpha: 0.5),
-          width: 3,
-        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 3),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1319,10 +1593,16 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   Color _getExerciseColor(WorkoutExercise exercise) {
     final muscles = exercise.targetMuscles.join(' ').toLowerCase();
-    if (muscles.contains('спина') || muscles.contains('back')) return Colors.blue;
+    if (muscles.contains('спина') || muscles.contains('back')) {
+      return Colors.blue;
+    }
     if (muscles.contains('ног') || muscles.contains('leg')) return Colors.green;
-    if (muscles.contains('рук') || muscles.contains('arm')) return Colors.orange;
-    if (muscles.contains('кор') || muscles.contains('core')) return Colors.purple;
+    if (muscles.contains('рук') || muscles.contains('arm')) {
+      return Colors.orange;
+    }
+    if (muscles.contains('кор') || muscles.contains('core')) {
+      return Colors.purple;
+    }
     return AppColors.primary;
   }
 
@@ -1337,7 +1617,9 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   IconData _getExerciseIcon(WorkoutExercise exercise) {
-    if (exercise.targetMuscles.contains('спина')) return Icons.accessibility_new;
+    if (exercise.targetMuscles.contains('спина')) {
+      return Icons.accessibility_new;
+    }
     if (exercise.targetMuscles.contains('ноги')) return Icons.directions_walk;
     if (exercise.targetMuscles.contains('руки')) return Icons.fitness_center;
     return Icons.self_improvement;
@@ -1366,9 +1648,7 @@ class WorkoutPlayerPage extends StatelessWidget {
               context.read<WorkoutCubit>().cancelWorkout();
               context.go(AppRoutes.home);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Завершить'),
           ),
         ],
@@ -1376,9 +1656,14 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  void _showCompletionDialog(BuildContext context, WorkoutCompleted initialState) {
+  void _showCompletionDialog(
+    BuildContext context,
+    WorkoutCompleted initialState,
+  ) {
     final workoutCubit = context.read<WorkoutCubit>();
     final minutes = initialState.totalDurationSeconds ~/ 60;
+    var showAllTips = false;
+    var showAllRecoverySteps = false;
 
     showDialog(
       context: context,
@@ -1392,165 +1677,350 @@ class WorkoutPlayerPage extends StatelessWidget {
               feedback = state.feedback;
             }
 
-            return AlertDialog(
-              title: const Row(
-                children: [
-                  Icon(Icons.celebration, color: AppColors.success),
-                  SizedBox(width: 8),
-                  Text('Отличная работа!'),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        size: 64,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        initialState.workout.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            final mediaQuery = MediaQuery.of(dialogContext);
+            final isCompact =
+                mediaQuery.size.height < 760 || mediaQuery.size.width < 380;
+            final summaryMaxLines = isCompact ? 3 : 5;
+            final encouragementMaxLines = isCompact ? 2 : 3;
+            final visibleTipsCount = isCompact ? 2 : 4;
+
+            return StatefulBuilder(
+              builder: (context, setState) => AlertDialog(
+                insetPadding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 16 : 24,
+                  vertical: isCompact ? 14 : 24,
+                ),
+                title: const Row(
+                  children: [
+                    Icon(Icons.celebration, color: AppColors.success),
+                    SizedBox(width: 8),
+                    Text('Отличная работа!'),
+                  ],
+                ),
+                content: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight:
+                        mediaQuery.size.height * (isCompact ? 0.62 : 0.7),
+                  ),
+                  child: SizedBox(
+                    width: double.maxFinite,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildStatChip(Icons.timer, '$minutes мин'),
-                          _buildStatChip(Icons.fitness_center, '${initialState.workout.totalExercises} упр.'),
-                        ],
-                      ),
-                      if (initialState.painReportsCount > 0) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
+                          Icon(
+                            Icons.check_circle,
+                            size: isCompact ? 54 : 64,
+                            color: AppColors.success,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          SizedBox(height: isCompact ? 12 : 16),
+                          Text(
+                            initialState.workout.title,
+                            style: TextStyle(
+                              fontSize: isCompact ? 16 : 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: isCompact ? 12 : 16),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
-                              const Icon(Icons.warning, size: 16, color: AppColors.warning),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Жалоб на боль: ${initialState.painReportsCount}',
-                                style: const TextStyle(
-                                  color: AppColors.warning,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
+                              _buildStatChip(
+                                Icons.timer,
+                                '$minutes мин',
+                                compact: isCompact,
+                              ),
+                              _buildStatChip(
+                                Icons.fitness_center,
+                                '${initialState.workout.totalExercises} упр.',
+                                compact: isCompact,
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                      const Divider(height: 32),
-                      
-                      // AI Feedback Section
-                      if (feedback == null)
-                        Column(
-                          children: [
-                            const SizedBox(height: 8),
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 16),
-                            Text(
-                              'AI анализирует вашу тренировку...',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              feedback.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(feedback.summary),
-                            const SizedBox(height: 12),
-                            if (feedback.tips.isNotEmpty) ...[
-                              const Text(
-                                'Советы:',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 4),
-                              ...feedback.tips.map((tip) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('• '),
-                                    Expanded(child: Text(tip, style: const TextStyle(fontSize: 13))),
-                                  ],
-                                ),
-                              )),
-                            ],
-                            const SizedBox(height: 12),
+                          if (initialState.painReportsCount > 0) ...[
+                            const SizedBox(height: 10),
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryLight.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                color: AppColors.warning.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.psychology, color: AppColors.primary),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      feedback.encouragement,
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w500,
-                                        fontStyle: FontStyle.italic,
-                                      ),
+                                  const Icon(
+                                    Icons.warning,
+                                    size: 16,
+                                    color: AppColors.warning,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Жалоб на боль: ${initialState.painReportsCount}',
+                                    style: const TextStyle(
+                                      color: AppColors.warning,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Recovery Plan Section
-                            if (feedback.recoveryPlan != null) ...[
-                              const Divider(height: 32),
-                              _buildRecoveryPlanSection(feedback.recoveryPlan!),
-                            ],
                           ],
-                        ),
-                    ],
+                          Divider(height: isCompact ? 24 : 32),
+
+                          if (feedback == null)
+                            Column(
+                              children: [
+                                const SizedBox(height: 8),
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'AI анализирует вашу тренировку...',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  feedback.title,
+                                  style: TextStyle(
+                                    fontSize: isCompact ? 15 : 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  feedback.summary,
+                                  maxLines: summaryMaxLines,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10),
+                                if (feedback.tips.isNotEmpty) ...[
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.15),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.tips_and_updates_rounded,
+                                              color: AppColors.primary,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Советы (${feedback.tips.length})',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ...feedback.tips
+                                            .take(
+                                              showAllTips
+                                                  ? feedback.tips.length
+                                                  : visibleTipsCount,
+                                            )
+                                            .map(
+                                              (tip) => Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 6,
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Padding(
+                                                      padding: EdgeInsets.only(
+                                                        top: 6,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.circle,
+                                                        size: 6,
+                                                        color:
+                                                            AppColors.primary,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        tip,
+                                                        style: TextStyle(
+                                                          fontSize: isCompact
+                                                              ? 12
+                                                              : 13,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        if (feedback.tips.length >
+                                            visibleTipsCount)
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  showAllTips = !showAllTips;
+                                                });
+                                              },
+                                              child: Text(
+                                                showAllTips
+                                                    ? 'Свернуть'
+                                                    : 'Показать все',
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryLight.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.psychology,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          feedback.encouragement,
+                                          maxLines: encouragementMaxLines,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w500,
+                                            fontStyle: FontStyle.italic,
+                                            fontSize: isCompact ? 13 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (feedback.recoveryPlan != null) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: Colors.transparent,
+                                      ),
+                                      child: ExpansionTile(
+                                        tilePadding: EdgeInsets.zero,
+                                        childrenPadding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        iconColor: Colors.indigo,
+                                        collapsedIconColor: Colors.indigo,
+                                        leading: const Icon(
+                                          Icons.restore,
+                                          color: Colors.indigo,
+                                        ),
+                                        title: const Text(
+                                          'План восстановления',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          isCompact
+                                              ? 'Кратко, без перегруза'
+                                              : 'Откройте, чтобы посмотреть шаги',
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                        children: [
+                                          _buildRecoveryPlanSection(
+                                            feedback.recoveryPlan!,
+                                            compact: isCompact,
+                                            showAllSteps: showAllRecoverySteps,
+                                            onToggleSteps: () {
+                                              setState(() {
+                                                showAllRecoverySteps =
+                                                    !showAllRecoverySteps;
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
+                actions: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        workoutCubit.reset();
+                        context.go(AppRoutes.home);
+                      },
+                      child: const Text('На главную'),
+                    ),
+                  ),
+                ],
               ),
-              actions: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                      workoutCubit.reset();
-                      context.go(AppRoutes.home);
-                    },
-                    child: const Text('На главную'),
-                  ),
-                ),
-              ],
             );
           },
         ),
@@ -1558,84 +2028,87 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecoveryPlanSection(RecoveryPlan plan) {
+  Widget _buildRecoveryPlanSection(
+    RecoveryPlan plan, {
+    bool compact = false,
+    bool showAllSteps = false,
+    VoidCallback? onToggleSteps,
+  }) {
+    final visibleSteps = compact && !showAllSteps ? 3 : plan.steps.length;
+    final displayedSteps = plan.steps.take(visibleSteps).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with rest duration
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.blue.shade50,
-                Colors.indigo.shade50,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade100),
+            color: Colors.indigo.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.indigo.withValues(alpha: 0.18)),
           ),
-          child: Column(
+          child: Row(
             children: [
-              const Icon(Icons.restore, color: Colors.indigo, size: 28),
-              const SizedBox(height: 4),
-              const Text(
-                'План восстановления',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.indigo,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              const Icon(Icons.schedule, color: Colors.indigo, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
                 child: Text(
-                  '⏰ Отдых: ${plan.restDuration}',
+                  'Отдых: ${plan.restDuration}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.indigo,
+                    fontSize: 13,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Recovery steps
-        ...plan.steps.map((step) => _buildRecoveryStepCard(step)),
+        ...displayedSteps.map(
+          (step) => _buildRecoveryStepCard(step, compact: compact),
+        ),
 
-        // Nutrition tip
+        if (compact && plan.steps.length > 3 && onToggleSteps != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onToggleSteps,
+              child: Text(
+                showAllSteps
+                    ? 'Скрыть шаги'
+                    : 'Ещё шаги (${plan.steps.length - 3})',
+              ),
+            ),
+          ),
+
         const SizedBox(height: 8),
         _buildRecoveryTipCard(
-          icon: '🍽️',
+          icon: '\uD83E\uDD57',
           title: 'Питание',
           description: plan.nutritionTip,
           color: Colors.green,
+          compact: compact,
         ),
 
-        // Sleep tip
         const SizedBox(height: 8),
         _buildRecoveryTipCard(
-          icon: '😴',
+          icon: '\uD83D\uDE34',
           title: 'Сон',
           description: plan.sleepTip,
           color: Colors.deepPurple,
+          compact: compact,
         ),
       ],
     );
   }
 
-  Widget _buildRecoveryStepCard(RecoveryStep step) {
+  Widget _buildRecoveryStepCard(RecoveryStep step, {bool compact = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(compact ? 8 : 10),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(10),
@@ -1644,7 +2117,7 @@ class WorkoutPlayerPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(step.icon, style: const TextStyle(fontSize: 24)),
+          Text(step.icon, style: TextStyle(fontSize: compact ? 20 : 24)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1652,23 +2125,25 @@ class WorkoutPlayerPage extends StatelessWidget {
               children: [
                 Text(
                   step.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: compact ? 12 : 13,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   step.description,
+                  maxLines: compact ? 2 : 3,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: compact ? 11 : 12,
                     color: Colors.grey.shade700,
                   ),
                 ),
-                if (step.timing != null) ...[
+                if (!compact && step.timing != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '🕐 ${step.timing}',
+                    '\u23F0 ${step.timing}',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.blue.shade600,
@@ -1689,9 +2164,10 @@ class WorkoutPlayerPage extends StatelessWidget {
     required String title,
     required String description,
     required Color color,
+    bool compact = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(compact ? 8 : 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
@@ -1710,15 +2186,17 @@ class WorkoutPlayerPage extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: compact ? 12 : 13,
                     color: color,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
+                  maxLines: compact ? 2 : 3,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: compact ? 11 : 12,
                     color: Colors.grey.shade700,
                   ),
                 ),
@@ -1730,25 +2208,30 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatChip(IconData icon, String label) {
+  Widget _buildStatChip(IconData icon, String label, {bool compact = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 5 : 6,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primaryLight.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: AppColors.primaryLight.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary),
-          const SizedBox(width: 6),
+          Icon(icon, size: compact ? 14 : 16, color: AppColors.primary),
+          SizedBox(width: compact ? 5 : 6),
           Text(
-            label, 
-            style: const TextStyle(
+            label,
+            style: TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.w500,
-              fontSize: 13,
+              fontSize: compact ? 12 : 13,
             ),
           ),
         ],

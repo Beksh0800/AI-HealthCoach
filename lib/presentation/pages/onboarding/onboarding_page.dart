@@ -61,7 +61,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('РћС€РёР±РєР°: РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ Р°РІС‚РѕСЂРёР·РѕРІР°РЅ')),
+        const SnackBar(content: Text('Ошибка: пользователь не авторизован')),
       );
       return;
     }
@@ -78,7 +78,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       // Create user profile
       final profile = UserProfile(
         uid: authState.uid,
-        name: _name.isEmpty ? 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ' : _name,
+        name: _name.isEmpty ? 'Пользователь' : _name,
         email: authState.email,
         medicalProfile: MedicalProfile(
           age: _age,
@@ -102,7 +102,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: $e')),
+          SnackBar(content: Text('Ошибка сохранения: $e')),
         );
       }
     } finally {
@@ -165,7 +165,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _isSaving ? null : _previousPage,
-                        child: const Text('РќР°Р·Р°Рґ'),
+                        child: const Text('Назад'),
                       ),
                     ),
                   if (_currentPage > 0) const SizedBox(width: 16),
@@ -181,7 +181,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(_currentPage == 3 ? 'Р—Р°РІРµСЂС€РёС‚СЊ' : 'Р”Р°Р»РµРµ'),
+                          : Text(_currentPage == 3 ? 'Завершить' : 'Далее'),
                     ),
                   ),
                 ],
@@ -249,7 +249,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Р Р°СЃСЃРєР°Р¶Рё Рѕ СЃРµР±Рµ',
+            'Расскажи о себе',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -260,7 +260,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           // Name
           TextField(
             decoration: const InputDecoration(
-              labelText: 'РРјСЏ',
+              labelText: 'Имя',
               prefixIcon: Icon(Icons.person_outline),
             ),
             onChanged: (value) => _name = value,
@@ -269,7 +269,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Age
           Text(
-            'Р’РѕР·СЂР°СЃС‚: $_age Р»РµС‚',
+            'Возраст: $_age лет',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -277,7 +277,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 16,
             max: 80,
             divisions: 64,
-            label: '$_age Р»РµС‚',
+            label: '$_age лет',
             onChanged: (value) {
               setState(() => _age = value.round());
             },
@@ -286,7 +286,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Weight
           Text(
-            'Р’РµСЃ: ${_weight.toStringAsFixed(1)} РєРі',
+            'Вес: ${_weight.toStringAsFixed(1)} кг',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -294,7 +294,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 40,
             max: 150,
             divisions: 110,
-            label: '${_weight.toStringAsFixed(1)} РєРі',
+            label: '${_weight.toStringAsFixed(1)} кг',
             onChanged: (value) {
               setState(() => _weight = value);
             },
@@ -303,7 +303,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Activity level
           const Text(
-            'РЈСЂРѕРІРµРЅСЊ Р°РєС‚РёРІРЅРѕСЃС‚Рё',
+            'Уровень активности',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
@@ -335,7 +335,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'РџСЂРѕР±Р»РµРјС‹ СЃРѕ Р·РґРѕСЂРѕРІСЊРµРј',
+            'Проблемы со здоровьем',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -343,8 +343,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Р’С‹Р±РµСЂРё РІСЃС‘, С‡С‚Рѕ Рє С‚РµР±Рµ РѕС‚РЅРѕСЃРёС‚СЃСЏ. '
-            'Р­С‚Рѕ РїРѕРјРѕР¶РµС‚ РёСЃРєР»СЋС‡РёС‚СЊ РѕРїР°СЃРЅС‹Рµ СѓРїСЂР°Р¶РЅРµРЅРёСЏ.',
+            'Выбери всё, что к тебе относится. '
+            'Это поможет исключить опасные упражнения.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -390,7 +390,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Р•СЃР»Рё Сѓ С‚РµР±СЏ РЅРµС‚ РїСЂРѕР±Р»РµРј СЃРѕ Р·РґРѕСЂРѕРІСЊРµРј, РїСЂРѕСЃС‚Рѕ РЅР°Р¶РјРё "Р”Р°Р»РµРµ"',
+                    'Если у тебя нет проблем со здоровьем, просто нажми "Далее"',
                     style: TextStyle(color: AppColors.info),
                   ),
                 ),
@@ -404,11 +404,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Widget _buildGoalsPage() {
     final goals = [
-      'РР·Р±Р°РІРёС‚СЊСЃСЏ РѕС‚ Р±РѕР»РµР№ РІ СЃРїРёРЅРµ',
-      'РЈРєСЂРµРїРёС‚СЊ РјС‹С€РµС‡РЅС‹Р№ РєРѕСЂСЃРµС‚',
-      'Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊСЃСЏ РїРѕСЃР»Рµ С‚СЂР°РІРјС‹',
-      'РЈР»СѓС‡С€РёС‚СЊ РіРёР±РєРѕСЃС‚СЊ',
-      'РџРѕРґРґРµСЂР¶Р°С‚СЊ РѕР±С‰РёР№ С‚РѕРЅСѓСЃ',
+      'Избавиться от болей в спине',
+      'Укрепить мышечный корсет',
+      'Восстановиться после травмы',
+      'Улучшить гибкость',
+      'Поддержать общий тонус',
     ];
 
     return SingleChildScrollView(
@@ -417,7 +417,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'РўРІРѕСЏ С†РµР»СЊ',
+            'Твоя цель',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -425,7 +425,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Р§С‚Рѕ РґР»СЏ С‚РµР±СЏ СЃРµР№С‡Р°СЃ РІР°Р¶РЅРµРµ РІСЃРµРіРѕ?',
+            'Что для тебя сейчас важнее всего?',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/error_mapper.dart';
 import '../../../data/models/user_profile_model.dart';
 import '../../../domain/repositories/i_user_repository.dart';
@@ -124,23 +125,99 @@ class ProfileCubit extends Cubit<ProfileState> {
     if (currentState is! ProfileLoaded) return;
 
     final currentProfile = currentState.profile;
+    final sanitizedNameRaw = _sanitizeText(
+      name ?? currentProfile.name,
+      AppConstants.maxNameLength,
+    );
+    final sanitizedName = sanitizedNameRaw.isEmpty
+        ? currentProfile.name
+        : sanitizedNameRaw;
+    final sanitizedGoals = _sanitizeText(
+      goals ?? currentProfile.goals,
+      AppConstants.maxGoalsLength,
+    );
+    final sanitizedAge = _clampInt(
+      age ?? currentProfile.medicalProfile.age,
+      AppConstants.minAge,
+      AppConstants.maxAge,
+    );
+    final sanitizedHeight = _clampDouble(
+      height ?? currentProfile.medicalProfile.height,
+      AppConstants.minHeightCm,
+      AppConstants.maxHeightCm,
+    );
+    final sanitizedWeight = _clampDouble(
+      weight ?? currentProfile.medicalProfile.weight,
+      AppConstants.minWeightKg,
+      AppConstants.maxWeightKg,
+    );
+    final sanitizedGender = _normalizeGender(
+      gender ?? currentProfile.medicalProfile.gender,
+    );
+    final sanitizedInjuries = _sanitizeInjuries(
+      injuries ?? currentProfile.medicalProfile.injuries,
+    );
+    final contraindications = MedicalProfile.generateContraindications(
+      sanitizedInjuries,
+      AppConstants.contraindicationsMap,
+    );
     final updatedProfile = currentProfile.copyWith(
-      name: name,
-      goals: goals,
+      name: sanitizedName,
+      goals: sanitizedGoals,
       medicalProfile: MedicalProfile(
-        age: age ?? currentProfile.medicalProfile.age,
-        weight: weight ?? currentProfile.medicalProfile.weight,
-        height: height ?? currentProfile.medicalProfile.height,
-        gender: gender ?? currentProfile.medicalProfile.gender,
+        age: sanitizedAge,
+        weight: sanitizedWeight,
+        height: sanitizedHeight,
+        gender: sanitizedGender,
         activityLevel:
             activityLevel ?? currentProfile.medicalProfile.activityLevel,
-        injuries: injuries ?? currentProfile.medicalProfile.injuries,
-        contraindications: currentProfile.medicalProfile.contraindications,
+        injuries: sanitizedInjuries,
+        contraindications: contraindications,
       ),
       updatedAt: DateTime.now(),
     );
 
     await updateProfile(updatedProfile);
+  }
+
+  String _sanitizeText(String value, int maxLength) {
+    final trimmed = value.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return trimmed.substring(0, maxLength);
+  }
+
+  int _clampInt(int value, int min, int max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
+
+  double _clampDouble(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
+
+  String _normalizeGender(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'male':
+      case 'female':
+      case 'not_specified':
+        return value.trim().toLowerCase();
+      default:
+        return 'not_specified';
+    }
+  }
+
+  List<String> _sanitizeInjuries(List<String> injuries) {
+    final result = <String>[];
+    for (final injury in injuries) {
+      final normalized = _sanitizeText(injury, AppConstants.maxInjuryLength);
+      if (normalized.isEmpty || result.contains(normalized)) continue;
+      result.add(normalized);
+      if (result.length >= AppConstants.maxInjuriesCount) break;
+    }
+    return result;
   }
 
   /// Clear profile (on logout)

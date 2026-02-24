@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
@@ -24,16 +27,141 @@ class _HomePageState extends State<HomePage> {
   WorkoutStats? _workoutStats;
   List<String> _suggestions = [];
   bool _isLoadingAnalytics = true;
+  bool _showOfflineState = false;
+  Timer? _connectivityTimer;
 
   @override
   void initState() {
     super.initState();
-    // Load profile when home page is opened
+    _reloadHomeData();
+  }
+
+  @override
+  void dispose() {
+    _connectivityTimer?.cancel();
+    super.dispose();
+  }
+
+  void _reloadHomeData() {
+    if (!mounted) return;
+    setState(() => _showOfflineState = false);
     context.read<ProfileCubit>().loadProfile();
-    // Load workout history for statistics
     context.read<HistoryCubit>().loadHistory();
-    // Load analytics
     _loadAnalytics();
+    _syncHomeConnectionState();
+  }
+
+  bool _isProfileLoadingState(ProfileState state) {
+    return state is ProfileInitial ||
+        state is ProfileLoading ||
+        state is ProfileUpdating;
+  }
+
+  bool _isHistoryLoadingState(HistoryState state) {
+    return state is HistoryInitial || state is HistoryLoading;
+  }
+
+  bool _isHomeLoading(ProfileState profileState, HistoryState historyState) {
+    return _isProfileLoadingState(profileState) ||
+        _isHistoryLoadingState(historyState);
+  }
+
+  void _syncHomeConnectionState() {
+    if (!mounted) return;
+    final profileState = context.read<ProfileCubit>().state;
+    final historyState = context.read<HistoryCubit>().state;
+    final isLoading = _isHomeLoading(profileState, historyState);
+
+    if (isLoading) {
+      _scheduleOfflineCheck();
+      return;
+    }
+
+    _connectivityTimer?.cancel();
+    if (_showOfflineState) {
+      setState(() => _showOfflineState = false);
+    }
+
+    if (profileState is ProfileError || historyState is HistoryError) {
+      Future<void>.delayed(const Duration(milliseconds: 700), () async {
+        if (!mounted) return;
+        final hasInternet = await _hasInternetConnection();
+        if (!mounted) return;
+        setState(() => _showOfflineState = !hasInternet);
+      });
+    }
+  }
+
+  void _scheduleOfflineCheck() {
+    _connectivityTimer?.cancel();
+    _connectivityTimer = Timer(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+      final profileState = context.read<ProfileCubit>().state;
+      final historyState = context.read<HistoryCubit>().state;
+      if (!_isHomeLoading(profileState, historyState)) return;
+      final hasInternet = await _hasInternetConnection();
+      if (!mounted) return;
+      if (!hasInternet) {
+        setState(() => _showOfflineState = true);
+      }
+    });
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final response = await http
+          .get(Uri.parse('https://clients3.google.com/generate_204'))
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          SizedBox(height: 12),
+          Text('Загружаем данные...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              size: 44,
+              color: AppColors.error,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Нет подключения к интернету.\nПовторите после подключения к интернету.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _reloadHomeData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Повторить'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadAnalytics() async {
@@ -42,21 +170,26 @@ class _HomePageState extends State<HomePage> {
       final analyticsService = sl<WorkoutAnalyticsService>();
       try {
         final stats = await analyticsService.getWorkoutStats(auth.uid);
-        final suggestions = await analyticsService.getWorkoutSuggestions(auth.uid);
+        final suggestions = await analyticsService.getWorkoutSuggestions(
+          auth.uid,
+        );
         if (mounted) {
           setState(() {
             _workoutStats = stats;
             _suggestions = suggestions;
             _isLoadingAnalytics = false;
           });
+          _syncHomeConnectionState();
         }
       } catch (e) {
         if (mounted) {
           setState(() => _isLoadingAnalytics = false);
+          _syncHomeConnectionState();
         }
       }
     } else {
       setState(() => _isLoadingAnalytics = false);
+      _syncHomeConnectionState();
     }
   }
 
@@ -67,68 +200,95 @@ class _HomePageState extends State<HomePage> {
     return 'Добрый вечер';
   }
 
-// Removed: _onNavTap handled by ShellRoute
-
+  // Removed: _onNavTap handled by ShellRoute
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI-HealthCoach'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              context.read<AuthCubit>().signOut();
-              context.go(AppRoutes.login);
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ProfileCubit, ProfileState>(
+          listener: (context, state) => _syncHomeConnectionState(),
+        ),
+        BlocListener<HistoryCubit, HistoryState>(
+          listener: (context, state) => _syncHomeConnectionState(),
+        ),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('AI-HealthCoach'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () {
+                context.read<AuthCubit>().signOut();
+                context.go(AppRoutes.login);
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: BlocBuilder<ProfileCubit, ProfileState>(
+            builder: (context, profileState) {
+              return BlocBuilder<HistoryCubit, HistoryState>(
+                builder: (context, historyState) {
+                  final isHomeLoading = _isHomeLoading(
+                    profileState,
+                    historyState,
+                  );
+
+                  if (_showOfflineState) {
+                    return _buildOfflineState();
+                  }
+
+                  if (isHomeLoading) {
+                    return _buildLoadingState();
+                  }
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Greeting Card with user name
+                        _buildGreetingCard(context),
+                        const SizedBox(height: 16),
+
+                        // Streak & AI Recommendations Card
+                        _buildStreakAndSuggestionsCard(context),
+                        const SizedBox(height: 24),
+
+                        // Quick Actions
+                        Text(
+                          'Быстрые действия',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildQuickActions(context),
+                        const SizedBox(height: 24),
+
+                        // User Profile Summary
+                        _buildProfileSummary(context),
+                        const SizedBox(height: 24),
+
+                        // Today's stats placeholder
+                        Text(
+                          'Статистика',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildStatsCard(context),
+                      ],
+                    ),
+                  );
+                },
+              );
             },
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Greeting Card with user name
-              _buildGreetingCard(context),
-              const SizedBox(height: 16),
-
-              // Streak & AI Recommendations Card
-              _buildStreakAndSuggestionsCard(context),
-              const SizedBox(height: 24),
-
-              // Quick Actions
-              Text(
-                'Быстрые действия',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              _buildQuickActions(context),
-              const SizedBox(height: 24),
-
-              // User Profile Summary
-              _buildProfileSummary(context),
-              const SizedBox(height: 24),
-
-              // Today's stats placeholder
-              Text(
-                'Статистика',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              _buildStatsCard(context),
-            ],
-          ),
         ),
+        // Removed: BottomNavigationBar handled by ShellRoute
       ),
-// Removed: BottomNavigationBar handled by ShellRoute
-
     );
   }
 
@@ -235,16 +395,27 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(width: 8),
                       Text(
                         'Мой профиль',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const Divider(height: 24),
-                  _buildProfileRow(Icons.cake, 'Возраст', '${medicalProfile.age} лет'),
-                  _buildProfileRow(Icons.fitness_center, 'Вес', '${medicalProfile.weight.toStringAsFixed(1)} кг'),
-                  _buildProfileRow(Icons.directions_run, 'Активность', _localizeActivityLevel(medicalProfile.activityLevel)),
+                  _buildProfileRow(
+                    Icons.cake,
+                    'Возраст',
+                    '${medicalProfile.age} лет',
+                  ),
+                  _buildProfileRow(
+                    Icons.fitness_center,
+                    'Вес',
+                    '${medicalProfile.weight.toStringAsFixed(1)} кг',
+                  ),
+                  _buildProfileRow(
+                    Icons.directions_run,
+                    'Активность',
+                    _localizeActivityLevel(medicalProfile.activityLevel),
+                  ),
                   if (profile.goals.isNotEmpty)
                     _buildProfileRow(Icons.flag, 'Цель', profile.goals),
                   if (medicalProfile.injuries.isNotEmpty)
@@ -255,9 +426,16 @@ class _HomePageState extends State<HomePage> {
                         runSpacing: 6,
                         children: medicalProfile.injuries.map((injury) {
                           return Chip(
-                            label: Text(injury, style: const TextStyle(fontSize: 12)),
-                            backgroundColor: AppColors.warning.withValues(alpha: 0.1),
-                            side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
+                            label: Text(
+                              injury,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            backgroundColor: AppColors.warning.withValues(
+                              alpha: 0.1,
+                            ),
+                            side: BorderSide(
+                              color: AppColors.warning.withValues(alpha: 0.3),
+                            ),
                           );
                         }).toList(),
                       ),
@@ -278,10 +456,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           Icon(icon, size: 18, color: AppColors.textSecondary),
           const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
+          Text('$label: ', style: TextStyle(color: AppColors.textSecondary)),
           Expanded(
             child: Text(
               value,
@@ -302,7 +477,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.self_improvement,
             title: 'ЛФК',
             color: AppColors.info,
-            onTap: () => context.push(AppRoutes.checkIn, extra: WorkoutTypes.lfk),
+            onTap: () =>
+                context.push(AppRoutes.checkIn, extra: WorkoutTypes.lfk),
           ),
         ),
         const SizedBox(width: 12),
@@ -312,7 +488,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.accessibility_new,
             title: 'Растяжка',
             color: AppColors.secondary,
-            onTap: () => context.push(AppRoutes.checkIn, extra: WorkoutTypes.stretching),
+            onTap: () =>
+                context.push(AppRoutes.checkIn, extra: WorkoutTypes.stretching),
           ),
         ),
         const SizedBox(width: 12),
@@ -322,7 +499,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.sports_gymnastics,
             title: 'Силовая',
             color: AppColors.warning,
-            onTap: () => context.push(AppRoutes.checkIn, extra: WorkoutTypes.strength),
+            onTap: () =>
+                context.push(AppRoutes.checkIn, extra: WorkoutTypes.strength),
           ),
         ),
       ],
@@ -374,7 +552,8 @@ class _HomePageState extends State<HomePage> {
           workouts = state.totalWorkouts.toString();
           minutes = state.totalMinutes.toString();
           if (state.totalWorkouts > 0) {
-            progress = '${(state.totalWorkouts / 10 * 100).clamp(0, 100).toInt()}%';
+            progress =
+                '${(state.totalWorkouts / 10 * 100).clamp(0, 100).toInt()}%';
           }
         } else if (state is HistoryLoading) {
           workouts = '...';
@@ -391,7 +570,11 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatItem(workouts, 'Тренировок', Icons.fitness_center),
+                      _buildStatItem(
+                        workouts,
+                        'Тренировок',
+                        Icons.fitness_center,
+                      ),
                       _buildStatItem(minutes, 'Минут', Icons.timer_outlined),
                       _buildStatItem(progress, 'Прогресс', Icons.trending_up),
                     ],
@@ -399,7 +582,10 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 8),
                   Text(
                     'Нажмите для подробной статистики',
-                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -426,10 +612,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -476,7 +659,7 @@ class _HomePageState extends State<HomePage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: streak > 0 
+                    color: streak > 0
                         ? AppColors.warning.withValues(alpha: 0.1)
                         : AppColors.info.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -554,13 +737,17 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...(_suggestions.take(2).map((suggestion) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  suggestion,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ))),
+              ...(_suggestions
+                  .take(2)
+                  .map(
+                    (suggestion) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        suggestion,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  )),
             ],
           ],
         ),
@@ -575,21 +762,16 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 10,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
         ),
       ],
     );
   }
+
   String _localizeActivityLevel(String level) {
     switch (level.toLowerCase()) {
       case 'low':

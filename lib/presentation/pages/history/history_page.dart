@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 import '../../../core/di/injection_container.dart';
@@ -14,7 +17,7 @@ class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<HistoryCubit>()..loadHistory(),
+      create: (_) => sl<HistoryCubit>(),
       child: const _HistoryPageContent(),
     );
   }
@@ -30,17 +33,159 @@ class _HistoryPageContent extends StatefulWidget {
 class _HistoryPageContentState extends State<_HistoryPageContent>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  Timer? _connectivityTimer;
+  bool _showOfflineState = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reloadHistory();
+    });
   }
 
   @override
   void dispose() {
+    _connectivityTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  bool _isLoadingState(HistoryState state) {
+    return state is HistoryInitial || state is HistoryLoading;
+  }
+
+  Future<void> _reloadHistory() async {
+    if (!mounted) return;
+    setState(() => _showOfflineState = false);
+    final loadFuture = context.read<HistoryCubit>().loadHistory();
+    _scheduleOfflineCheck();
+    await loadFuture;
+  }
+
+  void _scheduleOfflineCheck() {
+    _connectivityTimer?.cancel();
+    _connectivityTimer = Timer(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+      final state = context.read<HistoryCubit>().state;
+      if (!_isLoadingState(state)) return;
+      final hasInternet = await _hasInternetConnection();
+      if (!mounted) return;
+      if (!hasInternet) {
+        setState(() => _showOfflineState = true);
+      }
+    });
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final response = await http
+          .get(Uri.parse('https://clients3.google.com/generate_204'))
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _handleHistoryStateChange(HistoryState state) {
+    if (_isLoadingState(state)) {
+      _scheduleOfflineCheck();
+      return;
+    }
+
+    _connectivityTimer?.cancel();
+
+    if (state is HistoryLoaded) {
+      if (_showOfflineState) {
+        setState(() => _showOfflineState = false);
+      }
+      return;
+    }
+
+    if (state is HistoryError) {
+      Future<void>.delayed(const Duration(milliseconds: 700), () async {
+        if (!mounted) return;
+        final hasInternet = await _hasInternetConnection();
+        if (!mounted) return;
+        setState(() => _showOfflineState = !hasInternet);
+      });
+    }
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          SizedBox(height: 12),
+          Text('Загружаем историю...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              size: 44,
+              color: AppColors.error,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Нет подключения к интернету.\nПовторите после подключения к интернету.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _reloadHistory,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Повторить'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 44, color: AppColors.warning),
+            const SizedBox(height: 12),
+            const Text(
+              'Не удалось загрузить историю',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _reloadHistory,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Повторить'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -53,61 +198,63 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => context.read<HistoryCubit>().loadHistory(),
+            onPressed: _reloadHistory,
           ),
         ],
       ),
-      body: BlocBuilder<HistoryCubit, HistoryState>(
+      body: BlocConsumer<HistoryCubit, HistoryState>(
+        listener: (context, state) => _handleHistoryStateChange(state),
         builder: (context, state) {
-          if (state is HistoryLoading) {
-            return const Center(child: CircularProgressIndicator());
+          if (_showOfflineState) {
+            return _buildOfflineState();
+          }
+
+          if (_isLoadingState(state)) {
+            return _buildLoadingState();
           }
 
           if (state is HistoryError) {
-            return Center(child: Text('Ошибка: ${state.message}'));
+            return _buildErrorState(state.message);
           }
 
-          if (state is HistoryLoaded) {
-            return RefreshIndicator(
-              onRefresh: () => context.read<HistoryCubit>().loadHistory(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatsOverview(context, state),
-                    const SizedBox(height: 24),
-                    _buildChartTabs(context, state),
-                    const SizedBox(height: 24),
-                    if (state.typeDistribution.isNotEmpty) ...[
-                      _buildTypeDistributionChart(
-                        context,
-                        state.typeDistribution,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    const Text(
-                      'Последние тренировки',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+          if (state is! HistoryLoaded) {
+            return _buildLoadingState();
+          }
+
+          return RefreshIndicator(
+            onRefresh: _reloadHistory,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatsOverview(context, state),
+                  const SizedBox(height: 24),
+                  _buildChartTabs(context, state),
+                  const SizedBox(height: 24),
+                  if (state.typeDistribution.isNotEmpty) ...[
+                    _buildTypeDistributionChart(
+                      context,
+                      state.typeDistribution,
                     ),
-                    const SizedBox(height: 16),
-                    if (state.history.isEmpty)
-                      _buildEmptyState()
-                    else
-                      ...state.history.map(
-                        (workout) => _buildHistoryCard(workout),
-                      ),
+                    const SizedBox(height: 24),
                   ],
-                ),
+                  const Text(
+                    'Последние тренировки',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  if (state.history.isEmpty)
+                    _buildEmptyState()
+                  else
+                    ...state.history.map(
+                      (workout) => _buildHistoryCard(workout),
+                    ),
+                ],
               ),
-            );
-          }
-
-          return const SizedBox.shrink();
+            ),
+          );
         },
       ),
     );

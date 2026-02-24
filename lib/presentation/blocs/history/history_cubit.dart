@@ -14,9 +14,9 @@ class HistoryCubit extends Cubit<HistoryState> {
   HistoryCubit({
     required IHistoryRepository repository,
     required FirebaseAuth auth,
-  })  : _repository = repository,
-        _auth = auth,
-        super(HistoryInitial());
+  }) : _repository = repository,
+       _auth = auth,
+       super(HistoryInitial());
 
   Future<void> loadHistory() async {
     final user = _auth.currentUser;
@@ -44,16 +44,26 @@ class HistoryCubit extends Cubit<HistoryState> {
         typeDistFuture,
       ]);
 
-      emit(HistoryLoaded(
-        history: results[0] as List<WorkoutHistory>,
-        totalWorkouts: results[1] as int,
-        totalMinutes: results[2] as int,
-        weeklyActivity: results[3] as List<double>,
-        monthlyActivity: results[4] as List<double>,
-        typeDistribution: results[5] as Map<String, int>,
-      ));
+      emit(
+        HistoryLoaded(
+          history: results[0] as List<WorkoutHistory>,
+          totalWorkouts: results[1] as int,
+          totalMinutes: results[2] as int,
+          weeklyActivity: results[3] as List<double>,
+          monthlyActivity: results[4] as List<double>,
+          typeDistribution: results[5] as Map<String, int>,
+        ),
+      );
     } catch (e) {
-      emit(HistoryError(e.toString()));
+      emit(HistoryError(_mapErrorMessage(e)));
     }
+  }
+
+  String _mapErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.replaceFirst('Exception: ', '');
+    }
+    return message;
   }
 }

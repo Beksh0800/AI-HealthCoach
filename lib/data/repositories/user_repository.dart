@@ -8,7 +8,7 @@ class UserRepository implements IUserRepository {
   final FirebaseFirestore _firestore;
 
   UserRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference get _usersCollection => _firestore.collection('users');
 
@@ -26,15 +26,11 @@ class UserRepository implements IUserRepository {
   /// Get user profile
   @override
   Future<UserProfile?> getUserProfile(String uid) async {
-    try {
-      final doc = await _usersCollection.doc(uid).get();
-      if (doc.exists) {
-        return UserProfile.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }
-      return null;
-    } catch (e) {
-      return null;
+    final doc = await _usersCollection.doc(uid).get();
+    if (doc.exists) {
+      return UserProfile.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     }
+    return null;
   }
 
   /// Watch user profile for real-time updates
@@ -51,23 +47,25 @@ class UserRepository implements IUserRepository {
   /// Create or update user profile
   @override
   Future<void> saveUserProfile(UserProfile profile) async {
-    await _usersCollection.doc(profile.uid).set(
-      profile.toMap(),
-      SetOptions(merge: true),
-    );
+    await _usersCollection
+        .doc(profile.uid)
+        .set(profile.toMap(), SetOptions(merge: true));
   }
 
   /// Update user profile with full object
   @override
   Future<void> updateUserProfile(UserProfile profile) async {
-    await _usersCollection.doc(profile.uid).update(
-      profile.copyWith(updatedAt: DateTime.now()).toMap(),
-    );
+    await _usersCollection
+        .doc(profile.uid)
+        .update(profile.copyWith(updatedAt: DateTime.now()).toMap());
   }
 
   /// Update specific fields of user profile
   @override
-  Future<void> updateUserProfileFields(String uid, Map<String, dynamic> data) async {
+  Future<void> updateUserProfileFields(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
     data['updated_at'] = Timestamp.now();
     await _usersCollection.doc(uid).update(data);
   }

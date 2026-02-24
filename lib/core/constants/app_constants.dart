@@ -49,24 +49,29 @@ class AppConstants {
       'Резкие движения',
       'Прыжки',
     ],
-    'Сколиоз': [
-      'Асимметричные упражнения с весом',
-      'Прыжки с приземлением',
-    ],
+    'Сколиоз': ['Асимметричные упражнения с весом', 'Прыжки с приземлением'],
     'Травма мениска': [
       'Глубокие приседания',
       'Прыжки',
       'Бег',
       'Выпады с большой амплитудой',
     ],
-    'Артроз коленного сустава': [
-      'Прыжки',
-      'Бег',
-      'Глубокие приседания',
-    ],
+    'Артроз коленного сустава': ['Прыжки', 'Бег', 'Глубокие приседания'],
   };
 
   // Pain levels
   static const int painThresholdForLightWorkout = 4;
   static const int painThresholdForNoWorkout = 7;
+
+  // Profile validation limits
+  static const int minAge = 16;
+  static const int maxAge = 100;
+  static const double minHeightCm = 120;
+  static const double maxHeightCm = 230;
+  static const double minWeightKg = 30;
+  static const double maxWeightKg = 300;
+  static const int maxNameLength = 50;
+  static const int maxGoalsLength = 300;
+  static const int maxInjuryLength = 60;
+  static const int maxInjuriesCount = 15;
 }

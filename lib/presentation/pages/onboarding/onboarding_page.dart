@@ -26,6 +26,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   // Form data
   String _name = '';
+  String _selectedGender = 'not_specified';
   int _age = 25;
   double _weight = 70.0;
   String _activityLevel = AppConstants.activityLevels[0];
@@ -84,6 +85,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         medicalProfile: MedicalProfile(
           age: _age,
           weight: _weight,
+          gender: _selectedGender,
           activityLevel: _activityLevel,
           injuries: _selectedInjuries.toList(),
           contraindications: contraindications,
@@ -266,11 +268,42 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Name
           TextField(
+            maxLength: AppConstants.maxNameLength,
             decoration: const InputDecoration(
               labelText: 'Имя',
               prefixIcon: Icon(Icons.person_outline),
             ),
-            onChanged: (value) => _name = value,
+            onChanged: (value) => _name = value.trim(),
+          ),
+          const SizedBox(height: 8),
+
+          // Gender
+          const Text(
+            'Пол',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Мужской'),
+                selected: _selectedGender == 'male',
+                onSelected: (_) => setState(() => _selectedGender = 'male'),
+              ),
+              ChoiceChip(
+                label: const Text('Женский'),
+                selected: _selectedGender == 'female',
+                onSelected: (_) => setState(() => _selectedGender = 'female'),
+              ),
+              ChoiceChip(
+                label: const Text('Не указывать'),
+                selected: _selectedGender == 'not_specified',
+                onSelected: (_) =>
+                    setState(() => _selectedGender = 'not_specified'),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
 

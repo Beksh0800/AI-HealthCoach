@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
@@ -114,12 +115,12 @@ class _SplashPageState extends State<SplashPage>
                         height: 120,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Image.asset(
-                            'assets/images/ai_health_coach_logo.png',
+                          child: SvgPicture.asset(
+                            'assets/images/AI Health Coach logo.svg',
                             fit: BoxFit.contain,
                           ),
                         ),

@@ -48,6 +48,7 @@ dependencies:
   chewie: ^1.13.0
   webview_flutter: ^4.13.0
   flutter_timezone: ^4.1.1
+  flutter_svg: ^2.0.14
 
 dev_dependencies:
   flutter_test:
@@ -63,7 +64,7 @@ flutter:
 
   assets:
     - .env
-    - assets/images/ai_health_coach_logo.png
+    - assets/images/AI Health Coach logo.svg
 
 flutter_launcher_icons:
   android: true

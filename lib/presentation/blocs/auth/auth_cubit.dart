@@ -39,12 +39,14 @@ class AuthCubit extends Cubit<AuthState> {
         ),
       );
     } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'AUTH_STATUS_FAILED',
+      );
       emit(
         AuthError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage: 'Не удалось проверить статус авторизации',
-          ),
+          errorCode: mapped.code ?? 'AUTH_STATUS_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -75,17 +77,27 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
       } else {
-        emit(const AuthError('Не удалось войти'));
+        emit(const AuthError(errorCode: 'AUTH_SIGNIN_FAILED'));
       }
     } on FirebaseAuthException catch (e) {
-      emit(AuthError(_getErrorMessage(e.code)));
-    } catch (e) {
       emit(
         AuthError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage: 'Не удалось выполнить вход. Попробуйте позже.',
+          errorCode: _mapAuthErrorCode(
+            e.code,
+            defaultCode: 'AUTH_SIGNIN_FAILED',
           ),
+          debugMessage: e.message,
+        ),
+      );
+    } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'AUTH_SIGNIN_FAILED',
+      );
+      emit(
+        AuthError(
+          errorCode: mapped.code ?? 'AUTH_SIGNIN_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -113,17 +125,27 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
       } else {
-        emit(const AuthError('Не удалось зарегистрироваться'));
+        emit(const AuthError(errorCode: 'AUTH_SIGNUP_FAILED'));
       }
     } on FirebaseAuthException catch (e) {
-      emit(AuthError(_getErrorMessage(e.code)));
-    } catch (e) {
       emit(
         AuthError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage: 'Не удалось зарегистрироваться. Попробуйте позже.',
+          errorCode: _mapAuthErrorCode(
+            e.code,
+            defaultCode: 'AUTH_SIGNUP_FAILED',
           ),
+          debugMessage: e.message,
+        ),
+      );
+    } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'AUTH_SIGNUP_FAILED',
+      );
+      emit(
+        AuthError(
+          errorCode: mapped.code ?? 'AUTH_SIGNUP_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -150,31 +172,22 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  /// Get user-friendly error message
-  String _getErrorMessage(String code) {
+  String _mapAuthErrorCode(String code, {required String defaultCode}) {
     switch (code) {
       case 'user-not-found':
-        return 'Пользователь не найден';
       case 'wrong-password':
-        return 'Неверный пароль';
-      case 'email-already-in-use':
-        return 'Email уже используется';
-      case 'weak-password':
-        return 'Слишком слабый пароль';
-      case 'invalid-email':
-        return 'Неверный формат email';
-      case 'user-disabled':
-        return 'Аккаунт заблокирован';
-      case 'too-many-requests':
-        return 'Слишком много попыток. Попробуйте позже';
-      case 'network-request-failed':
-        return 'Нет подключения к интернету';
       case 'invalid-credential':
-        return 'Неверный логин или пароль';
-      case 'operation-not-allowed':
-        return 'Метод входа недоступен. Обратитесь к поддержке';
+        return 'INVALID_CREDENTIALS';
+      case 'email-already-in-use':
+        return 'EMAIL_IN_USE';
+      case 'weak-password':
+        return 'WEAK_PASSWORD';
+      case 'too-many-requests':
+        return 'TOO_MANY_REQUESTS';
+      case 'network-request-failed':
+        return 'NO_CONNECTION';
       default:
-        return 'Ошибка авторизации: $code';
+        return defaultCode;
     }
   }
 }

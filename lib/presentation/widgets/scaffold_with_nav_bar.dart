@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../gen/app_localizations.dart';
 
 class ScaffoldWithNavBar extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -14,32 +14,20 @@ class ScaffoldWithNavBar extends StatefulWidget {
 }
 
 class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
-  DateTime? _lastBackPressedAt;
-
   void _onBackPressed() {
+    final shell = widget.navigationShell;
+    final currentNavigator =
+        shell.route.branches[shell.currentIndex].navigatorKey.currentState;
+
+    if (currentNavigator != null && currentNavigator.canPop()) {
+      currentNavigator.pop();
+      return;
+    }
+
     if (widget.navigationShell.currentIndex != 0) {
       widget.navigationShell.goBranch(0);
       return;
     }
-
-    final now = DateTime.now();
-    final shouldExit =
-        _lastBackPressedAt != null &&
-        now.difference(_lastBackPressedAt!) <= const Duration(seconds: 2);
-    if (shouldExit) {
-      SystemNavigator.pop();
-      return;
-    }
-
-    _lastBackPressedAt = now;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Нажмите "Назад" еще раз для выхода'),
-          duration: Duration(seconds: 2),
-        ),
-      );
   }
 
   void _onTap(int index) {
@@ -68,26 +56,26 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textSecondary,
           showUnselectedLabels: true,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Главная',
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: AppLocalizations.of(context).navHome,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.fitness_center_outlined),
-              activeIcon: Icon(Icons.fitness_center),
-              label: 'Тренировка',
+              icon: const Icon(Icons.fitness_center_outlined),
+              activeIcon: const Icon(Icons.fitness_center),
+              label: AppLocalizations.of(context).navWorkout,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history_outlined),
-              activeIcon: Icon(Icons.history),
-              label: 'История',
+              icon: const Icon(Icons.history_outlined),
+              activeIcon: const Icon(Icons.history),
+              label: AppLocalizations.of(context).navHistory,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Профиль',
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: AppLocalizations.of(context).navProfile,
             ),
           ],
         ),

@@ -8,6 +8,7 @@ class WorkoutHistory {
   final String workoutId;
   final String userUid;
   final String title;
+  final String? languageCode;
   final String type; // lfk, stretching, strength
   final String intensity; // light, moderate, high
   final int durationSeconds;
@@ -19,6 +20,7 @@ class WorkoutHistory {
     required this.workoutId,
     required this.userUid,
     required this.title,
+    this.languageCode,
     required this.type,
     required this.intensity,
     required this.durationSeconds,
@@ -41,6 +43,7 @@ class WorkoutHistory {
       workoutId: map['workout_id'] ?? '',
       userUid: map['user_uid'] ?? '',
       title: map['title'] ?? 'Тренировка',
+      languageCode: map['language_code'] as String?,
       type: map['type'] ?? 'lfk',
       intensity: map['intensity'] ?? 'moderate',
       durationSeconds: map['duration_seconds']?.toInt() ?? 0,

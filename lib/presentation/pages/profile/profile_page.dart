@@ -1,15 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_localization_utils.dart';
+import '../../../core/utils/profile_localization_utils.dart';
+import '../../../core/utils/profile_value_utils.dart';
 import '../../../data/models/user_profile_model.dart';
 import '../../blocs/auth/auth_cubit.dart';
 import '../../blocs/profile/profile_cubit.dart';
+import '../../utils/ui_action_guard.dart';
 import 'edit_profile_dialog.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -22,6 +27,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   Timer? _connectivityTimer;
   bool _showOfflineState = false;
+  final UiActionGuard<_ProfileModalType> _actionGuard =
+      UiActionGuard<_ProfileModalType>(debugLabel: 'ProfilePage');
 
   @override
   void initState() {
@@ -38,9 +45,16 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showEditProfileDialog(BuildContext context, UserProfile profile) {
-    showDialog(
-      context: context,
-      builder: (context) => EditProfileDialog(profile: profile),
+    unawaited(
+      _actionGuard.runModal(
+        'profile_edit_dialog',
+        modalType: _ProfileModalType.editProfile,
+        idempotentWhenSameModalOpen: true,
+        action: () => showDialog(
+          context: context,
+          builder: (context) => EditProfileDialog(profile: profile),
+        ),
+      ),
     );
   }
 
@@ -115,12 +129,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Профиль'),
+        title: Text(AppLocalizations.of(context).profileTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Настройки',
-            onPressed: () => context.go(AppRoutes.settings),
+            tooltip: AppLocalizations.of(context).settingsTitle,
+            onPressed: () => context.push(AppRoutes.settings),
           ),
           BlocBuilder<ProfileCubit, ProfileState>(
             builder: (context, state) {
@@ -157,6 +171,8 @@ class _ProfilePageState extends State<ProfilePage> {
           if (state is ProfileLoaded) {
             final profile = state.profile;
             final medical = profile.medicalProfile;
+            final l10n = AppLocalizations.of(context);
+            final localeCode = Localizations.localeOf(context).languageCode;
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -186,31 +202,34 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 32),
 
-                  _buildSectionTitle(context, 'Личные данные'),
+                  _buildSectionTitle(context, l10n.profilePersonalData),
                   Card(
                     child: Column(
                       children: [
                         _buildProfileItem(
                           Icons.cake,
-                          'Возраст',
-                          '${medical.age} лет',
+                          l10n.profileAge,
+                          ProfileValueUtils.formatAgeByLocale(
+                            medical.age,
+                            localeCode,
+                          ),
                         ),
                         const Divider(height: 1),
                         _buildProfileItem(
                           Icons.height,
-                          'Рост',
-                          '${medical.height} см',
+                          l10n.profileHeight,
+                          '${medical.height} ${l10n.profileCm}',
                         ),
                         const Divider(height: 1),
                         _buildProfileItem(
                           Icons.monitor_weight,
-                          'Вес',
-                          '${medical.weight} кг',
+                          l10n.profileWeight,
+                          '${medical.weight} ${l10n.profileKg}',
                         ),
                         const Divider(height: 1),
                         _buildProfileItem(
                           Icons.wc,
-                          'Пол',
+                          l10n.profileGender,
                           _localizeGender(medical.gender),
                         ),
                       ],
@@ -218,25 +237,43 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
 
                   const SizedBox(height: 24),
-                  _buildSectionTitle(context, 'Здоровье и Цели'),
+                  _buildSectionTitle(context, l10n.profileHealthGoals),
                   Card(
                     child: Column(
                       children: [
                         _buildProfileItem(
                           Icons.directions_run,
-                          'Активность',
-                          _localizeActivityLevel(medical.activityLevel),
+                          l10n.profileActivity,
+                          ProfileLocalizationUtils.localizeActivity(
+                            l10n,
+                            medical.activityLevel,
+                          ),
                         ),
                         if (profile.goals.isNotEmpty) ...[
                           const Divider(height: 1),
-                          _buildProfileItem(Icons.flag, 'Цель', profile.goals),
+                          _buildProfileItem(
+                            Icons.flag,
+                            l10n.profileGoal,
+                            ProfileLocalizationUtils.localizeGoal(
+                              l10n,
+                              profile.goals,
+                            ),
+                          ),
                         ],
                         if (medical.injuries.isNotEmpty) ...[
                           const Divider(height: 1),
                           _buildProfileItem(
                             Icons.healing,
-                            'Ограничения',
-                            medical.injuries.join(', '),
+                            l10n.profileRestrictions,
+                            medical.injuries
+                                .map(
+                                  (injury) =>
+                                      ProfileLocalizationUtils.localizeInjury(
+                                        l10n,
+                                        injury,
+                                      ),
+                                )
+                                .join(', '),
                           ),
                         ],
                       ],
@@ -252,7 +289,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         context.go(AppRoutes.login);
                       },
                       icon: const Icon(Icons.logout),
-                      label: const Text('Выйти из аккаунта'),
+                      label: Text(AppLocalizations.of(context).profileSignOut),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: const BorderSide(color: AppColors.error),
@@ -267,15 +304,19 @@ class _ProfilePageState extends State<ProfilePage> {
 
           if (state is ProfileError) {
             return _buildErrorState(
-              title: 'Не удалось загрузить профиль',
-              message: state.message,
+              title: AppLocalizations.of(context).profileLoadError,
+              message: ErrorLocalizationUtils.localize(
+                context,
+                state.errorCode,
+                fallbackMessage: state.debugMessage,
+              ),
             );
           }
 
           if (state is ProfileNotFound) {
             return _buildErrorState(
-              title: 'Профиль не найден',
-              message: 'Заполните анкету или попробуйте обновить экран.',
+              title: AppLocalizations.of(context).profileNotFound,
+              message: AppLocalizations.of(context).profileNotFoundMessage,
             );
           }
 
@@ -289,14 +330,14 @@ class _ProfilePageState extends State<ProfilePage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           SizedBox(
             width: 28,
             height: 28,
             child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
           SizedBox(height: 12),
-          Text('Загружаем профиль...'),
+          Text(AppLocalizations.of(context).profileLoading),
         ],
       ),
     );
@@ -315,15 +356,15 @@ class _ProfilePageState extends State<ProfilePage> {
               color: AppColors.error,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Нет подключения к интернету.\nПовторите после подключения к интернету.',
+            Text(
+              AppLocalizations.of(context).profileOffline,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _reloadProfile,
               icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              label: Text(AppLocalizations.of(context).profileRetry),
             ),
           ],
         ),
@@ -347,7 +388,7 @@ class _ProfilePageState extends State<ProfilePage> {
             OutlinedButton.icon(
               onPressed: _reloadProfile,
               icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              label: Text(AppLocalizations.of(context).profileRetry),
             ),
           ],
         ),
@@ -394,27 +435,16 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _localizeActivityLevel(String level) {
-    switch (level.toLowerCase()) {
-      case 'low':
-        return 'Низкая';
-      case 'moderate':
-        return 'Умеренная';
-      case 'high':
-        return 'Высокая';
-      default:
-        return level;
-    }
-  }
-
   String _localizeGender(String gender) {
     switch (gender.trim().toLowerCase()) {
       case 'male':
-        return 'Мужской';
+        return AppLocalizations.of(context).profileGenderMale;
       case 'female':
-        return 'Женский';
+        return AppLocalizations.of(context).profileGenderFemale;
       default:
-        return 'Не указан';
+        return AppLocalizations.of(context).profileGenderNotSpecified;
     }
   }
 }
+
+enum _ProfileModalType { editProfile }

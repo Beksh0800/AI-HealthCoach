@@ -24,7 +24,7 @@ class CheckInCubit extends Cubit<CheckInState> {
   Future<void> checkTodayStatus() async {
     final user = _auth.currentUser;
     if (user == null) {
-      emit(const CheckInError('Пользователь не авторизован'));
+      emit(const CheckInError(errorCode: 'NOT_AUTHENTICATED'));
       return;
     }
 
@@ -38,13 +38,14 @@ class CheckInCubit extends Cubit<CheckInState> {
         emit(const CheckInInProgress());
       }
     } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'CHECKIN_LOAD_FAILED',
+      );
       emit(
         CheckInError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage:
-                'Не удалось загрузить чек-ин. Проверьте соединение.',
-          ),
+          errorCode: mapped.code ?? 'CHECKIN_LOAD_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -137,7 +138,7 @@ class CheckInCubit extends Cubit<CheckInState> {
   Future<void> submitCheckIn() async {
     final user = _auth.currentUser;
     if (user == null) {
-      emit(const CheckInError('Пользователь не авторизован'));
+      emit(const CheckInError(errorCode: 'NOT_AUTHENTICATED'));
       return;
     }
 
@@ -163,12 +164,14 @@ class CheckInCubit extends Cubit<CheckInState> {
       final id = await _checkInRepository.saveCheckIn(checkIn);
       emit(CheckInCompleted(checkIn.copyWith(id: id)));
     } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'CHECKIN_SAVE_FAILED',
+      );
       emit(
         CheckInError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage: 'Не удалось сохранить чек-ин. Попробуйте позже.',
-          ),
+          errorCode: mapped.code ?? 'CHECKIN_SAVE_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }

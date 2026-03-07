@@ -116,6 +116,7 @@ class GeminiService implements IAiService {
   /// Returns the raw response text from the AI.
   Future<String> _executeWithProvider({
     required String prompt,
+    String languageCode = 'ru',
     bool jsonMode = false,
     int maxTokens = 4096,
     double temperature = 0.7,
@@ -162,7 +163,7 @@ class GeminiService implements IAiService {
         try {
           final responseText = await _openRouter.generateCompletionWithFallback(
             prompt: prompt,
-            systemPrompt: AiPrompts.systemPrompt,
+            systemPrompt: AiPrompts.systemPrompt(languageCode: languageCode),
             jsonMode: jsonMode,
             maxTokens: maxTokens,
             temperature: temperature,
@@ -220,6 +221,7 @@ class GeminiService implements IAiService {
 
   Future<String> _requestWithProvider({
     required String prompt,
+    String languageCode = 'ru',
     bool jsonMode = false,
     int maxTokens = 4096,
     double temperature = 0.7,
@@ -236,11 +238,35 @@ class GeminiService implements IAiService {
     }
     return _executeWithProvider(
       prompt: prompt,
+      languageCode: languageCode,
       jsonMode: jsonMode,
       maxTokens: maxTokens,
       temperature: temperature,
       maxRetries: maxRetries,
     );
+  }
+
+  String _normalizeLanguageCode(String languageCode) {
+    final normalized = languageCode.trim().toLowerCase();
+    if (normalized.startsWith('en')) return 'en';
+    if (normalized.startsWith('kk')) return 'kk';
+    return 'ru';
+  }
+
+  String _localizedText({
+    required String languageCode,
+    required String ru,
+    required String kk,
+    required String en,
+  }) {
+    switch (_normalizeLanguageCode(languageCode)) {
+      case 'en':
+        return en;
+      case 'kk':
+        return kk;
+      default:
+        return ru;
+    }
   }
 
   bool _isLikelyParseError(Object error) {
@@ -317,6 +343,7 @@ $basePrompt
     required String workoutType,
     required List<Exercise> availableExercises,
     String? targetIntensity,
+    String languageCode = 'ru',
   }) async {
     if (!isConfigured) {
       throw Exception(
@@ -338,10 +365,12 @@ $basePrompt
       workoutType: workoutType,
       exercises: safeExercises,
       targetIntensity: targetIntensity,
+      languageCode: languageCode,
     );
 
     final responseText = await _requestWithProvider(
       prompt: prompt,
+      languageCode: languageCode,
       jsonMode: true,
       maxTokens: _workoutGenerationMaxTokens,
     );
@@ -352,6 +381,7 @@ $basePrompt
         profile.uid,
         checkIn.id,
         workoutType,
+        languageCode: languageCode,
       );
     } catch (e) {
       if (!_isLikelyParseError(e)) rethrow;
@@ -362,6 +392,7 @@ $basePrompt
 
     final retryResponseText = await _requestWithProvider(
       prompt: _buildStrictJsonRetryPrompt(prompt),
+      languageCode: languageCode,
       jsonMode: true,
       maxTokens: _workoutGenerationMaxTokens,
       temperature: 0.2,
@@ -373,6 +404,7 @@ $basePrompt
       profile.uid,
       checkIn.id,
       workoutType,
+      languageCode: languageCode,
     );
   }
 
@@ -382,6 +414,7 @@ $basePrompt
     required String painLocation,
     required UserProfile profile,
     required List<Exercise> availableExercises,
+    String languageCode = 'ru',
   }) async {
     if (!isConfigured) return null;
 
@@ -403,11 +436,13 @@ $basePrompt
       currentExercise: currentExercise,
       painLocation: painLocation,
       safeExercises: safeExercises,
+      languageCode: languageCode,
     );
 
     try {
       final responseText = await _requestWithProvider(
         prompt: prompt,
+        languageCode: languageCode,
         jsonMode: true,
         maxTokens: 1024,
       );
@@ -425,47 +460,67 @@ $basePrompt
     required String exerciseName,
     required String exerciseDescription,
     required UserProfile profile,
+    String languageCode = 'ru',
   }) async {
     if (!isConfigured) {
-      return 'Упражнение подобрано с учётом ваших ограничений и является безопасным.';
+      return _localizedText(
+        languageCode: languageCode,
+        ru: 'Упражнение подобрано с учётом ваших ограничений и является безопасным.',
+        kk: 'Бұл жаттығу сіздің шектеулеріңіз ескеріліп таңдалған және қауіпсіз.',
+        en: 'This exercise was selected with your limitations in mind and is safe for you.',
+      );
     }
 
     final prompt = AiPrompts.exerciseSafety(
       exerciseName: exerciseName,
       exerciseDescription: exerciseDescription,
       profile: profile,
+      languageCode: languageCode,
     );
 
     try {
       final responseText = await _requestWithProvider(
         prompt: prompt,
+        languageCode: languageCode,
         jsonMode: false,
         maxTokens: 500,
       );
       return responseText;
     } catch (e) {
-      return 'Упражнение подобрано с учётом ваших ограничений и является безопасным.';
+      return _localizedText(
+        languageCode: languageCode,
+        ru: 'Упражнение подобрано с учётом ваших ограничений и является безопасным.',
+        kk: 'Бұл жаттығу сіздің шектеулеріңіз ескеріліп таңдалған және қауіпсіз.',
+        en: 'This exercise was selected with your limitations in mind and is safe for you.',
+      );
     }
   }
 
   @override
-  Future<String> getQuickRecommendation(DailyCheckIn checkIn) async {
+  Future<String> getQuickRecommendation(
+    DailyCheckIn checkIn, {
+    String languageCode = 'ru',
+  }) async {
     if (!isConfigured) {
-      return getDefaultRecommendation(checkIn);
+      return getDefaultRecommendation(checkIn, languageCode: languageCode);
     }
 
-    final prompt = AiPrompts.quickRecommendation(checkIn);
+    final prompt = AiPrompts.quickRecommendation(
+      checkIn,
+      languageCode: languageCode,
+    );
 
     try {
       final responseText = await _requestWithProvider(
         prompt: prompt,
+        languageCode: languageCode,
         jsonMode: false,
         maxTokens: 200,
         maxRetries: 0, // Quick recommendation — don't retry
       );
       return responseText;
     } catch (e) {
-      return getDefaultRecommendation(checkIn);
+      return getDefaultRecommendation(checkIn, languageCode: languageCode);
     }
   }
 
@@ -478,12 +533,14 @@ $basePrompt
     required int painReports,
     required UserProfile profile,
     List<String>? painLocations,
+    String languageCode = 'ru',
   }) async {
     if (!isConfigured) {
       return getDefaultPostWorkoutFeedback(
         durationMinutes: durationMinutes,
         exercisesCompleted: exercisesCompleted,
         painReports: painReports,
+        languageCode: languageCode,
       );
     }
 
@@ -495,11 +552,13 @@ $basePrompt
       painReports: painReports,
       profile: profile,
       painLocations: painLocations,
+      languageCode: languageCode,
     );
 
     try {
       final responseText = await _requestWithProvider(
         prompt: prompt,
+        languageCode: languageCode,
         jsonMode: true,
         maxTokens: 2048, // Increased from 1024 to avoid truncated responses
       );
@@ -508,6 +567,7 @@ $basePrompt
         workoutType,
         durationMinutes,
         painReports,
+        languageCode: languageCode,
       );
     } catch (e) {
       debugPrint('Error generating post-workout feedback: $e');
@@ -515,6 +575,7 @@ $basePrompt
         durationMinutes: durationMinutes,
         exercisesCompleted: exercisesCompleted,
         painReports: painReports,
+        languageCode: languageCode,
       );
     }
   }
@@ -740,8 +801,9 @@ $basePrompt
     String responseText,
     String userUid,
     String checkInId,
-    String workoutType,
-  ) {
+    String workoutType, {
+    String languageCode = 'ru',
+  }) {
     final cleanedText = cleanJsonResponse(responseText);
 
     try {
@@ -768,7 +830,14 @@ $basePrompt
       return Workout(
         id: '',
         userUid: userUid,
-        title: data['title'] ?? 'Персональная тренировка',
+        title:
+            data['title'] ??
+            _localizedText(
+              languageCode: languageCode,
+              ru: 'Персональная тренировка',
+              kk: 'Жеке жаттығу',
+              en: 'Personalized workout',
+            ),
         description: data['description'] ?? '',
         type: workoutType,
         intensity: inferIntensity(data),
@@ -780,6 +849,7 @@ $basePrompt
         aiMetadata: {
           'generated_at': DateTime.now().toIso8601String(),
           'model': _openRouter.isConfigured ? 'openrouter' : 'gemini',
+          'language_code': _normalizeLanguageCode(languageCode),
         },
       );
     } on FormatException catch (e, stackTrace) {
@@ -804,8 +874,9 @@ $basePrompt
     String responseText,
     String workoutType,
     int durationMinutes,
-    int painReports,
-  ) {
+    int painReports, {
+    String languageCode = 'ru',
+  }) {
     final cleanedText = cleanJsonResponse(responseText);
     final data = jsonDecode(cleanedText) as Map<String, dynamic>;
 
@@ -826,11 +897,32 @@ $basePrompt
     );
 
     return PostWorkoutFeedback(
-      title: data['title'] ?? '✅ Тренировка завершена',
-      summary: data['summary'] ?? 'Вы отлично поработали!',
+      title:
+          data['title'] ??
+          _localizedText(
+            languageCode: languageCode,
+            ru: '✅ Тренировка завершена',
+            kk: '✅ Жаттығу аяқталды',
+            en: '✅ Workout completed',
+          ),
+      summary:
+          data['summary'] ??
+          _localizedText(
+            languageCode: languageCode,
+            ru: 'Вы отлично поработали!',
+            kk: 'Сіз керемет жұмыс жасадыңыз!',
+            en: 'Great work today!',
+          ),
       tips: (data['tips'] as List<dynamic>?)?.cast<String>() ?? [],
       nextWorkoutSuggestion: data['next_workout_suggestion'] ?? '',
-      encouragement: data['encouragement'] ?? 'Продолжайте в том же духе!',
+      encouragement:
+          data['encouragement'] ??
+          _localizedText(
+            languageCode: languageCode,
+            ru: 'Продолжайте в том же духе!',
+            kk: 'Осы қарқынды жалғастырыңыз!',
+            en: 'Keep up the great momentum!',
+          ),
       recoveryPlan: recoveryPlan,
     );
   }
@@ -848,17 +940,40 @@ $basePrompt
   // ---------------------------------------------------------------------------
 
   @visibleForTesting
-  String getDefaultRecommendation(DailyCheckIn checkIn) {
+  String getDefaultRecommendation(
+    DailyCheckIn checkIn, {
+    String languageCode = 'ru',
+  }) {
     if (checkIn.painLevel >= 7) {
-      return 'Сегодня рекомендуется отдых. Прислушайся к своему телу.';
+      return _localizedText(
+        languageCode: languageCode,
+        ru: 'Сегодня рекомендуется отдых. Прислушайся к своему телу.',
+        kk: 'Бүгін демалған дұрыс. Денеңіздің белгісіне құлақ асыңыз.',
+        en: 'Rest is recommended today. Listen to your body.',
+      );
     }
     if (checkIn.painLevel >= 4 || checkIn.energyLevel <= 2) {
-      return 'Рекомендуется легкая тренировка с акцентом на растяжку.';
+      return _localizedText(
+        languageCode: languageCode,
+        ru: 'Рекомендуется легкая тренировка с акцентом на растяжку.',
+        kk: 'Созылуға басымдық берілген жеңіл жаттығу ұсынылады.',
+        en: 'A light workout with a focus on stretching is recommended.',
+      );
     }
     if (checkIn.energyLevel >= 4 && checkIn.painLevel <= 2) {
-      return 'Отличное состояние! Можно выполнить полноценную тренировку.';
+      return _localizedText(
+        languageCode: languageCode,
+        ru: 'Отличное состояние! Можно выполнить полноценную тренировку.',
+        kk: 'Күйіңіз тамаша! Толыққанды жаттығу жасауға болады.',
+        en: 'Great condition! You can do a full workout today.',
+      );
     }
-    return 'Рекомендуется умеренная тренировка под твои возможности.';
+    return _localizedText(
+      languageCode: languageCode,
+      ru: 'Рекомендуется умеренная тренировка под твои возможности.',
+      kk: 'Мүмкіндігіңізге сай орташа қарқындағы жаттығу ұсынылады.',
+      en: 'A moderate workout suited to your current condition is recommended.',
+    );
   }
 
   @visibleForTesting
@@ -866,6 +981,7 @@ $basePrompt
     required int durationMinutes,
     required int exercisesCompleted,
     required int painReports,
+    String languageCode = 'ru',
   }) {
     String title;
     String summary;
@@ -873,31 +989,110 @@ $basePrompt
     String encouragement;
 
     if (painReports > 2) {
-      title = '⚠️ Тренировка с осторожностью';
-      summary = 'Вы завершили тренировку, но было несколько жалоб на боль.';
+      title = _localizedText(
+        languageCode: languageCode,
+        ru: '⚠️ Тренировка с осторожностью',
+        kk: '⚠️ Сақтықпен орындалған жаттығу',
+        en: '⚠️ Cautionary workout',
+      );
+      summary = _localizedText(
+        languageCode: languageCode,
+        ru: 'Вы завершили тренировку, но было несколько жалоб на боль.',
+        kk: 'Жаттығуды аяқтадыңыз, бірақ ауырсыну туралы бірнеше белгі болды.',
+        en: 'You completed the workout, but there were multiple pain reports.',
+      );
       tips = [
-        'Убедитесь, что выполняете упражнения технически правильно',
-        'Рассмотрите более легкие варианты упражнений',
+        _localizedText(
+          languageCode: languageCode,
+          ru: 'Убедитесь, что выполняете упражнения технически правильно',
+          kk: 'Жаттығуларды дұрыс техникамен орындап жатқаныңызды тексеріңіз',
+          en: 'Make sure each exercise is performed with proper technique',
+        ),
+        _localizedText(
+          languageCode: languageCode,
+          ru: 'Рассмотрите более легкие варианты упражнений',
+          kk: 'Жаттығудың жеңілірек нұсқаларын қарастырыңыз',
+          en: 'Consider easier exercise variations',
+        ),
       ];
-      encouragement = 'Прислушивайтесь к своему телу — это важно!';
+      encouragement = _localizedText(
+        languageCode: languageCode,
+        ru: 'Прислушивайтесь к своему телу — это важно!',
+        kk: 'Денеңіздің белгісін тыңдау өте маңызды!',
+        en: 'Listening to your body is essential!',
+      );
     } else if (durationMinutes < 15) {
-      title = '👍 Быстрая тренировка';
-      summary = 'Даже короткая тренировка лучше, чем никакой.';
-      tips = ['Попробуйте увеличить время тренировки в следующий раз'];
-      encouragement = 'Главное — регулярность!';
+      title = _localizedText(
+        languageCode: languageCode,
+        ru: '👍 Быстрая тренировка',
+        kk: '👍 Қысқа жаттығу',
+        en: '👍 Quick workout',
+      );
+      summary = _localizedText(
+        languageCode: languageCode,
+        ru: 'Даже короткая тренировка лучше, чем никакой.',
+        kk: 'Қысқа жаттығудың өзі мүлдем жасамағаннан жақсы.',
+        en: 'Even a short workout is better than none.',
+      );
+      tips = [
+        _localizedText(
+          languageCode: languageCode,
+          ru: 'Попробуйте увеличить время тренировки в следующий раз',
+          kk: 'Келесі жолы жаттығу уақытын сәл ұзартып көріңіз',
+          en: 'Try extending your workout duration next time',
+        ),
+      ];
+      encouragement = _localizedText(
+        languageCode: languageCode,
+        ru: 'Главное — регулярность!',
+        kk: 'Ең бастысы — тұрақтылық!',
+        en: 'Consistency is what matters most!',
+      );
     } else {
-      title = '🎉 Отличная работа!';
-      summary =
-          'Вы выполнили $exercisesCompleted упражнений за $durationMinutes минут.';
-      tips = ['Не забывайте о восстановлении', 'Пейте достаточно воды'];
-      encouragement = 'Вы молодец! Так держать!';
+      title = _localizedText(
+        languageCode: languageCode,
+        ru: '🎉 Отличная работа!',
+        kk: '🎉 Тамаша жұмыс!',
+        en: '🎉 Great job!',
+      );
+      summary = _localizedText(
+        languageCode: languageCode,
+        ru: 'Вы выполнили $exercisesCompleted упражнений за $durationMinutes минут.',
+        kk: 'Сіз $durationMinutes минутта $exercisesCompleted жаттығу орындадыңыз.',
+        en: 'You completed $exercisesCompleted exercises in $durationMinutes minutes.',
+      );
+      tips = [
+        _localizedText(
+          languageCode: languageCode,
+          ru: 'Не забывайте о восстановлении',
+          kk: 'Қалпына келуге уақыт бөлуді ұмытпаңыз',
+          en: 'Don’t forget recovery',
+        ),
+        _localizedText(
+          languageCode: languageCode,
+          ru: 'Пейте достаточно воды',
+          kk: 'Суды жеткілікті мөлшерде ішіңіз',
+          en: 'Stay well hydrated',
+        ),
+      ];
+      encouragement = _localizedText(
+        languageCode: languageCode,
+        ru: 'Вы молодец! Так держать!',
+        kk: 'Жарайсыз! Осы қарқынды сақтаңыз!',
+        en: 'You’re doing great — keep it up!',
+      );
     }
 
     return PostWorkoutFeedback(
       title: title,
       summary: summary,
       tips: tips,
-      nextWorkoutSuggestion: 'Отдохните и продолжите завтра',
+      nextWorkoutSuggestion: _localizedText(
+        languageCode: languageCode,
+        ru: 'Отдохните и продолжите завтра',
+        kk: 'Демалып, ертең жалғастырыңыз',
+        en: 'Rest now and continue tomorrow',
+      ),
       encouragement: encouragement,
       recoveryPlan: RecoveryPlan.defaultPlan(
         workoutType: 'general',

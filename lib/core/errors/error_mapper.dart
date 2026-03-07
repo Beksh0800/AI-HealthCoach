@@ -5,7 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'app_exceptions.dart';
 
 class ErrorMapper {
-  static AppException toAppException(Object error, {String? fallbackMessage}) {
+  static AppException toAppException(
+    Object error, {
+    String? fallbackMessage,
+    String fallbackCode = 'UNKNOWN',
+  }) {
     if (error is AppException) return error;
 
     if (error is TimeoutException) {
@@ -105,12 +109,28 @@ class ErrorMapper {
 
     return AppException(
       fallbackMessage ?? 'Произошла ошибка. Попробуйте еще раз.',
+      code: fallbackCode,
       originalError: error,
     );
   }
 
-  static String toMessage(Object error, {String? fallbackMessage}) {
-    return toAppException(error, fallbackMessage: fallbackMessage).message;
+  static String toMessage(
+    Object error, {
+    String? fallbackMessage,
+    String fallbackCode = 'UNKNOWN',
+  }) {
+    return toAppException(
+      error,
+      fallbackMessage: fallbackMessage,
+      fallbackCode: fallbackCode,
+    ).message;
+  }
+
+  static String toErrorCode(Object error, {String fallbackCode = 'UNKNOWN'}) {
+    final mapped = toAppException(error, fallbackCode: fallbackCode);
+    final code = mapped.code?.trim();
+    if (code == null || code.isEmpty) return fallbackCode;
+    return code;
   }
 
   static bool isRetryable(Object error) {

@@ -4,7 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/profile_localization_utils.dart';
+import '../../../core/utils/profile_value_utils.dart';
 import '../../../data/models/user_profile_model.dart';
+import '../../../gen/app_localizations.dart';
 import '../../blocs/profile/profile_cubit.dart';
 
 class EditProfileDialog extends StatefulWidget {
@@ -18,6 +21,7 @@ class EditProfileDialog extends StatefulWidget {
 
 class _EditProfileDialogState extends State<EditProfileDialog> {
   final _formKey = GlobalKey<FormState>();
+  bool _didLocalizeInitialGoal = false;
 
   late TextEditingController _nameController;
   late TextEditingController _ageController;
@@ -80,6 +84,22 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didLocalizeInitialGoal) return;
+    _didLocalizeInitialGoal = true;
+
+    final localizedGoal = ProfileLocalizationUtils.localizeGoal(
+      AppLocalizations.of(context),
+      widget.profile.goals,
+    );
+
+    if (localizedGoal.trim().isNotEmpty) {
+      _goalsController.text = localizedGoal;
+    }
+  }
+
   int _clampIntValue(int value, int min, int max) {
     if (value < min) return min;
     if (value > max) return max;
@@ -100,18 +120,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   String _normalizeActivity(String value) {
-    const valid = ['low', 'moderate', 'high'];
-    final normalized = value.trim().toLowerCase();
-    if (valid.contains(normalized)) {
-      return normalized;
-    }
-    if (normalized.contains('низкая') || normalized.contains('сидячий')) {
-      return 'low';
-    }
-    if (normalized.contains('высокая')) {
-      return 'high';
-    }
-    return 'moderate';
+    return ProfileValueUtils.normalizeActivityCode(value);
   }
 
   String _normalizeGender(String value) {
@@ -131,59 +140,74 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   String? _validateName(String? value) {
+    final l = AppLocalizations.of(context);
     final text = (value ?? '').trim();
-    if (text.isEmpty) return 'Введите имя';
+    if (text.isEmpty) return l.editProfileValidateName;
     if (text.length > AppConstants.maxNameLength) {
-      return 'Имя не длиннее ${AppConstants.maxNameLength} символов';
+      return l.editProfileValidateNameLength(AppConstants.maxNameLength);
     }
     return null;
   }
 
   String? _validateAge(String? value) {
+    final l = AppLocalizations.of(context);
     final age = int.tryParse((value ?? '').trim());
-    if (age == null) return 'Введите корректный возраст';
+    if (age == null) return l.editProfileValidateAge;
     if (age < AppConstants.minAge || age > AppConstants.maxAge) {
-      return 'Возраст ${AppConstants.minAge}-${AppConstants.maxAge}';
+      return l.editProfileValidateAgeRange(
+        AppConstants.minAge,
+        AppConstants.maxAge,
+      );
     }
     return null;
   }
 
   String? _validateHeight(String? value) {
+    final l = AppLocalizations.of(context);
     final height = _parseDouble(value ?? '');
-    if (height == null) return 'Введите корректный рост';
+    if (height == null) return l.editProfileValidateHeight;
     if (height < AppConstants.minHeightCm ||
         height > AppConstants.maxHeightCm) {
-      return 'Рост ${AppConstants.minHeightCm.toInt()}-${AppConstants.maxHeightCm.toInt()} см';
+      return l.editProfileValidateHeightRange(
+        AppConstants.minHeightCm.toInt(),
+        AppConstants.maxHeightCm.toInt(),
+      );
     }
     return null;
   }
 
   String? _validateWeight(String? value) {
+    final l = AppLocalizations.of(context);
     final weight = _parseDouble(value ?? '');
-    if (weight == null) return 'Введите корректный вес';
+    if (weight == null) return l.editProfileValidateWeight;
     if (weight < AppConstants.minWeightKg ||
         weight > AppConstants.maxWeightKg) {
-      return 'Вес ${AppConstants.minWeightKg.toInt()}-${AppConstants.maxWeightKg.toInt()} кг';
+      return l.editProfileValidateWeightRange(
+        AppConstants.minWeightKg.toInt(),
+        AppConstants.maxWeightKg.toInt(),
+      );
     }
     return null;
   }
 
   String? _validateGoals(String? value) {
+    final l = AppLocalizations.of(context);
     final text = (value ?? '').trim();
     if (text.length > AppConstants.maxGoalsLength) {
-      return 'Цель не длиннее ${AppConstants.maxGoalsLength} символов';
+      return l.editProfileValidateGoalsLength(AppConstants.maxGoalsLength);
     }
     return null;
   }
 
   void _addInjury() {
+    final l = AppLocalizations.of(context);
     final text = _injuryController.text.trim();
     if (text.isEmpty) return;
     if (text.length > AppConstants.maxInjuryLength) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Ограничение не длиннее ${AppConstants.maxInjuryLength} символов',
+            l.editProfileInjuryTooLong(AppConstants.maxInjuryLength),
           ),
         ),
       );
@@ -193,7 +217,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Можно добавить до ${AppConstants.maxInjuriesCount} ограничений',
+            l.editProfileMaxInjuries(AppConstants.maxInjuriesCount),
           ),
         ),
       );
@@ -224,7 +248,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
     context.read<ProfileCubit>().updateProfileField(
       name: _nameController.text.trim(),
-      goals: _goalsController.text.trim(),
+      goals: ProfileValueUtils.normalizeGoalValue(_goalsController.text.trim()),
       age: age,
       height: height,
       weight: weight,
@@ -239,6 +263,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   Widget _buildAgeField() {
+    final l = AppLocalizations.of(context);
     return TextFormField(
       controller: _ageController,
       keyboardType: TextInputType.number,
@@ -246,9 +271,9 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(3),
       ],
-      decoration: const InputDecoration(
-        labelText: 'Возраст',
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l.editProfileAgeLabel,
+        border: const OutlineInputBorder(),
         counterText: '',
       ),
       validator: _validateAge,
@@ -256,6 +281,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   Widget _buildHeightField() {
+    final l = AppLocalizations.of(context);
     return TextFormField(
       controller: _heightController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -263,9 +289,9 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
         LengthLimitingTextInputFormatter(6),
       ],
-      decoration: const InputDecoration(
-        labelText: 'Рост (см)',
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l.editProfileHeightLabel,
+        border: const OutlineInputBorder(),
         counterText: '',
       ),
       validator: _validateHeight,
@@ -273,6 +299,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   Widget _buildWeightField() {
+    final l = AppLocalizations.of(context);
     return TextFormField(
       controller: _weightController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -280,9 +307,9 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
         FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
         LengthLimitingTextInputFormatter(6),
       ],
-      decoration: const InputDecoration(
-        labelText: 'Вес (кг)',
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l.editProfileWeightLabel,
+        border: const OutlineInputBorder(),
         counterText: '',
       ),
       validator: _validateWeight,
@@ -290,14 +317,15 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   }
 
   Widget _buildAddInjuryField() {
+    final l = AppLocalizations.of(context);
     return TextField(
       controller: _injuryController,
       maxLength: AppConstants.maxInjuryLength,
-      decoration: const InputDecoration(
-        labelText: 'Добавить травму/ограничение',
-        border: OutlineInputBorder(),
-        hintText: 'Например: боль в колене',
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: InputDecoration(
+        labelText: l.editProfileAddInjuryLabel,
+        border: const OutlineInputBorder(),
+        hintText: l.editProfileAddInjuryHint,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       onSubmitted: (_) => _addInjury(),
     );
@@ -305,6 +333,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
     return Dialog(
@@ -318,7 +347,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Редактирование профиля',
+                l.editProfileTitle,
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
@@ -330,35 +359,35 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionHeader('Основное'),
+                        _buildSectionHeader(l.editProfileSectionBasic),
                         TextFormField(
                           controller: _nameController,
                           maxLength: AppConstants.maxNameLength,
-                          decoration: const InputDecoration(
-                            labelText: 'Имя',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l.editProfileNameLabel,
+                            border: const OutlineInputBorder(),
                           ),
                           validator: _validateName,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedGender,
-                          decoration: const InputDecoration(
-                            labelText: 'Пол',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l.editProfileGenderLabel,
+                            border: const OutlineInputBorder(),
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'male',
-                              child: Text('Мужской'),
+                              child: Text(l.editProfileGenderMale),
                             ),
                             DropdownMenuItem(
                               value: 'female',
-                              child: Text('Женский'),
+                              child: Text(l.editProfileGenderFemale),
                             ),
                             DropdownMenuItem(
                               value: 'not_specified',
-                              child: Text('Не указан'),
+                              child: Text(l.editProfileGenderNotSpecified),
                             ),
                           ],
                           onChanged: (value) {
@@ -369,7 +398,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         ),
 
                         const SizedBox(height: 24),
-                        _buildSectionHeader('Физические данные'),
+                        _buildSectionHeader(l.editProfileSectionPhysical),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final isCompact = constraints.maxWidth < 440;
@@ -398,25 +427,25 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         ),
 
                         const SizedBox(height: 24),
-                        _buildSectionHeader('Цели и Активность'),
+                        _buildSectionHeader(l.editProfileSectionGoals),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedActivity,
-                          decoration: const InputDecoration(
-                            labelText: 'Уровень активности',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l.editProfileActivityLabel,
+                            border: const OutlineInputBorder(),
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'low',
-                              child: Text('Низкая (сидячий)'),
+                              child: Text(l.editProfileActivityLow),
                             ),
                             DropdownMenuItem(
                               value: 'moderate',
-                              child: Text('Умеренная (1-3 тренировки)'),
+                              child: Text(l.editProfileActivityModerate),
                             ),
                             DropdownMenuItem(
                               value: 'high',
-                              child: Text('Высокая (3+ тренировок)'),
+                              child: Text(l.editProfileActivityHigh),
                             ),
                           ],
                           onChanged: (value) {
@@ -430,15 +459,15 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                           controller: _goalsController,
                           maxLength: AppConstants.maxGoalsLength,
                           maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Цели',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l.editProfileGoalsLabel,
+                            border: const OutlineInputBorder(),
                           ),
                           validator: _validateGoals,
                         ),
 
                         const SizedBox(height: 24),
-                        _buildSectionHeader('Травмы и ограничения'),
+                        _buildSectionHeader(l.editProfileSectionInjuries),
                         Wrap(
                           spacing: 8,
                           runSpacing: 4,
@@ -469,7 +498,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                                   FilledButton.icon(
                                     onPressed: _addInjury,
                                     icon: const Icon(Icons.add),
-                                    label: const Text('Добавить'),
+                                    label: Text(l.editProfileAddButton),
                                   ),
                                 ],
                               );
@@ -482,7 +511,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                                 FilledButton.icon(
                                   onPressed: _addInjury,
                                   icon: const Icon(Icons.add),
-                                  label: const Text('Добавить'),
+                                  label: Text(l.editProfileAddButton),
                                 ),
                               ],
                             );
@@ -495,12 +524,12 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                           children: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
-                              child: const Text('Отмена'),
+                              child: Text(l.editProfileCancel),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
                               onPressed: _save,
-                              child: const Text('Сохранить'),
+                              child: Text(l.editProfileSave),
                             ),
                           ],
                         ),

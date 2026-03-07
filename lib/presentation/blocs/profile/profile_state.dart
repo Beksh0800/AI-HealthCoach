@@ -34,12 +34,13 @@ class ProfileNotFound extends ProfileState {
 
 /// Error loading profile
 class ProfileError extends ProfileState {
-  final String message;
+  final String errorCode;
+  final String? debugMessage;
 
-  const ProfileError(this.message);
+  const ProfileError({required this.errorCode, this.debugMessage});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [errorCode, debugMessage];
 }
 
 /// Profile is being updated

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../blocs/auth/auth_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/utils/error_localization_utils.dart';
 
 /// Registration page with email and password
 class RegisterPage extends StatefulWidget {
@@ -50,7 +52,13 @@ class _RegisterPageState extends State<RegisterPage> {
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(
+                  ErrorLocalizationUtils.localize(
+                    context,
+                    state.errorCode,
+                    fallbackMessage: state.debugMessage,
+                  ),
+                ),
                 backgroundColor: AppColors.error,
               ),
             );
@@ -107,7 +115,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         const SizedBox(height: 24),
         Text(
-          'Создайте аккаунт',
+          AppLocalizations.of(context).registerTitle,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -115,10 +123,10 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Начните свой путь к здоровью',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          AppLocalizations.of(context).registerSubtitle,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
@@ -139,11 +147,12 @@ class _RegisterPageState extends State<RegisterPage> {
               prefixIcon: Icon(Icons.email_outlined),
             ),
             validator: (value) {
+              final loc = AppLocalizations.of(context);
               if (value == null || value.isEmpty) {
-                return 'Введите email';
+                return loc.authErrorEmailEmpty;
               }
               if (!value.contains('@')) {
-                return 'Неверный формат email';
+                return loc.authErrorEmailInvalid;
               }
               return null;
             },
@@ -153,8 +162,8 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: _passwordController,
             obscureText: _obscurePassword,
             decoration: InputDecoration(
-              labelText: 'Пароль',
-              hintText: 'Минимум 6 символов',
+              labelText: AppLocalizations.of(context).registerPasswordLabel,
+              hintText: AppLocalizations.of(context).authHintPasswordMin,
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -168,11 +177,12 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
             validator: (value) {
+              final loc = AppLocalizations.of(context);
               if (value == null || value.isEmpty) {
-                return 'Введите пароль';
+                return loc.authErrorPasswordEmpty;
               }
               if (value.length < 6) {
-                return 'Пароль должен быть не менее 6 символов';
+                return loc.authErrorPasswordShort;
               }
               return null;
             },
@@ -182,8 +192,10 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: _confirmPasswordController,
             obscureText: _obscureConfirmPassword,
             decoration: InputDecoration(
-              labelText: 'Подтвердите пароль',
-              hintText: 'Повторите пароль',
+              labelText: AppLocalizations.of(
+                context,
+              ).registerConfirmPasswordLabel,
+              hintText: AppLocalizations.of(context).authHintPasswordRepeat,
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -199,11 +211,12 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
             validator: (value) {
+              final loc = AppLocalizations.of(context);
               if (value == null || value.isEmpty) {
-                return 'Подтвердите пароль';
+                return loc.authErrorPasswordConfirm;
               }
               if (value != _passwordController.text) {
-                return 'Пароли не совпадают';
+                return loc.registerPasswordMismatch;
               }
               return null;
             },
@@ -232,7 +245,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: Colors.white,
                   ),
                 )
-              : const Text('Зарегистрироваться'),
+              : Text(AppLocalizations.of(context).registerButton),
         );
       },
     );
@@ -242,13 +255,13 @@ class _RegisterPageState extends State<RegisterPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          'Уже есть аккаунт? ',
-          style: TextStyle(color: AppColors.textSecondary),
+        Text(
+          AppLocalizations.of(context).registerHaveAccount,
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         TextButton(
           onPressed: () => context.go(AppRoutes.login),
-          child: const Text('Войти'),
+          child: Text(AppLocalizations.of(context).registerLoginLink),
         ),
       ],
     );

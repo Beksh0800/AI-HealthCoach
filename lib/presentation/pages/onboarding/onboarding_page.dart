@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/router/app_router.dart';
+import '../../../core/router/tab_branch_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/profile_value_utils.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../core/errors/error_mapper.dart';
 import '../../../data/models/user_profile_model.dart';
@@ -29,7 +30,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String _selectedGender = 'not_specified';
   int _age = 25;
   double _weight = 70.0;
-  String _activityLevel = AppConstants.activityLevels[0];
+  String _activityLevel = ProfileValueUtils.activityLow;
   final Set<String> _selectedInjuries = {};
   String _goal = '';
 
@@ -63,7 +64,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка: пользователь не авторизован')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).onboardingErrorAuth),
+        ),
       );
       return;
     }
@@ -80,7 +83,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       // Create user profile
       final profile = UserProfile(
         uid: authState.uid,
-        name: _name.isEmpty ? 'Пользователь' : _name,
+        name: _name.isEmpty
+            ? AppLocalizations.of(context).onboardingDefaultName
+            : _name,
         email: authState.email,
         medicalProfile: MedicalProfile(
           age: _age,
@@ -100,20 +105,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
       // Update auth state
       if (mounted) {
         context.read<AuthCubit>().markOnboardingCompleted();
-        context.go(AppRoutes.home);
+        context.goToTabBranch(AppTabBranch.home);
       }
     } catch (e) {
       if (mounted) {
         final message = ErrorMapper.toMessage(
           e,
-          fallbackMessage: 'Не удалось сохранить профиль. Попробуйте позже.',
+          fallbackMessage: AppLocalizations.of(context).onboardingErrorSave,
         );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
             action: ErrorMapper.isRetryable(e)
                 ? SnackBarAction(
-                    label: 'Повторить',
+                    label: AppLocalizations.of(context).onboardingRetry,
                     onPressed: _completeOnboarding,
                   )
                 : null,
@@ -180,7 +185,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _isSaving ? null : _previousPage,
-                        child: const Text('Назад'),
+                        child: Text(
+                          AppLocalizations.of(context).onboardingBtnBack,
+                        ),
                       ),
                     ),
                   if (_currentPage > 0) const SizedBox(width: 16),
@@ -196,7 +203,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(_currentPage == 3 ? 'Завершить' : 'Далее'),
+                          : Text(
+                              _currentPage == 3
+                                  ? AppLocalizations.of(
+                                      context,
+                                    ).onboardingBtnFinish
+                                  : AppLocalizations.of(
+                                      context,
+                                    ).onboardingBtnNext,
+                            ),
                     ),
                   ),
                 ],
@@ -232,14 +247,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                const Text(
-                  'Добро пожаловать!',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                Text(
+                  AppLocalizations.of(context).onboardingWelcomeTitle,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Давайте создадим твой персональный профиль здоровья, чтобы тренировки были безопасными и эффективными.',
+                  AppLocalizations.of(context).onboardingWelcomeText,
                   style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textSecondary,
@@ -255,22 +273,34 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildBasicInfoPage() {
+    String getActivityLevelText(BuildContext context, String level) {
+      final l10n = AppLocalizations.of(context);
+      switch (ProfileValueUtils.normalizeActivityCode(level)) {
+        case ProfileValueUtils.activityLow:
+          return l10n.activityLevelSedentary;
+        case ProfileValueUtils.activityHigh:
+          return l10n.activityLevelHigh;
+        default:
+          return l10n.activityLevelModerate;
+      }
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Расскажи о себе',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).onboardingBasicTitle,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
 
           // Name
           TextField(
             maxLength: AppConstants.maxNameLength,
-            decoration: const InputDecoration(
-              labelText: 'Имя',
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).onboardingNameField,
               prefixIcon: Icon(Icons.person_outline),
             ),
             onChanged: (value) => _name = value.trim(),
@@ -278,9 +308,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
           const SizedBox(height: 8),
 
           // Gender
-          const Text(
-            'Пол',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          Text(
+            AppLocalizations.of(context).onboardingGenderTitle,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -288,17 +318,21 @@ class _OnboardingPageState extends State<OnboardingPage> {
             runSpacing: 8,
             children: [
               ChoiceChip(
-                label: const Text('Мужской'),
+                label: Text(AppLocalizations.of(context).onboardingGenderMale),
                 selected: _selectedGender == 'male',
                 onSelected: (_) => setState(() => _selectedGender = 'male'),
               ),
               ChoiceChip(
-                label: const Text('Женский'),
+                label: Text(
+                  AppLocalizations.of(context).onboardingGenderFemale,
+                ),
                 selected: _selectedGender == 'female',
                 onSelected: (_) => setState(() => _selectedGender = 'female'),
               ),
               ChoiceChip(
-                label: const Text('Не указывать'),
+                label: Text(
+                  AppLocalizations.of(context).onboardingGenderNotSpecified,
+                ),
                 selected: _selectedGender == 'not_specified',
                 onSelected: (_) =>
                     setState(() => _selectedGender = 'not_specified'),
@@ -309,7 +343,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Age
           Text(
-            'Возраст: $_age лет',
+            AppLocalizations.of(context).onboardingAgeText(_age),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -317,7 +351,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 16,
             max: 80,
             divisions: 64,
-            label: '$_age лет',
+            label: '$_age',
             onChanged: (value) {
               setState(() => _age = value.round());
             },
@@ -326,7 +360,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           // Weight
           Text(
-            'Вес: ${_weight.toStringAsFixed(1)} кг',
+            AppLocalizations.of(
+              context,
+            ).onboardingWeightText(_weight.toStringAsFixed(1)),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           Slider(
@@ -334,7 +370,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             min: 40,
             max: 150,
             divisions: 110,
-            label: '${_weight.toStringAsFixed(1)} кг',
+            label: _weight.toStringAsFixed(1),
             onChanged: (value) {
               setState(() => _weight = value);
             },
@@ -342,18 +378,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
           const SizedBox(height: 20),
 
           // Activity level
-          const Text(
-            'Уровень активности',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          Text(
+            AppLocalizations.of(context).onboardingActivityLevelTitle,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: AppConstants.activityLevels.map((level) {
+            children: ProfileValueUtils.activityCodes.map((level) {
               final isSelected = _activityLevel == level;
               return ChoiceChip(
-                label: Text(level),
+                label: Text(getActivityLevelText(context, level)),
                 selected: isSelected,
                 onSelected: (selected) {
                   if (selected) {
@@ -369,19 +405,46 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildHealthInfoPage() {
+    String getInjuryText(BuildContext context, String injury) {
+      final l10n = AppLocalizations.of(context);
+      switch (injury) {
+        case 'Грыжа поясничного отдела (L4-L5, L5-S1)':
+          return l10n.injuryHernia;
+        case 'Протрузия межпозвонковых дисков':
+          return l10n.injuryProtrusion;
+        case 'Сколиоз':
+          return l10n.injuryScoliosis;
+        case 'Остеохондроз':
+          return l10n.injuryOsteochondrosis;
+        case 'Травма мениска':
+          return l10n.injuryMeniscus;
+        case 'Артроз коленного сустава':
+          return l10n.injuryKneeArthrosis;
+        case 'Артроз тазобедренного сустава':
+          return l10n.injuryHipArthrosis;
+        case 'Проблемы с плечевым суставом':
+          return l10n.injuryShoulder;
+        case 'Травма запястья':
+          return l10n.injuryWrist;
+        case 'Боли в шейном отделе':
+          return l10n.injuryNeckPain;
+        default:
+          return injury;
+      }
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Проблемы со здоровьем',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).onboardingHealthTitle,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Выбери всё, что к тебе относится. '
-            'Это поможет исключить опасные упражнения.',
+            AppLocalizations.of(context).onboardingHealthText,
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
@@ -393,7 +456,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             children: AppConstants.commonInjuries.map((injury) {
               final isSelected = _selectedInjuries.contains(injury);
               return FilterChip(
-                label: Text(injury),
+                label: Text(getInjuryText(context, injury)),
                 selected: isSelected,
                 onSelected: (selected) {
                   setState(() {
@@ -424,7 +487,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Если у тебя нет проблем со здоровьем, просто нажми "Далее"',
+                    AppLocalizations.of(context).onboardingHealthInfo,
                     style: TextStyle(color: AppColors.info),
                   ),
                 ),
@@ -437,12 +500,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildGoalsPage() {
+    final l10n = AppLocalizations.of(context);
     final goals = [
-      'Избавиться от болей в спине',
-      'Укрепить мышечный корсет',
-      'Восстановиться после травмы',
-      'Улучшить гибкость',
-      'Поддержать общий тонус',
+      (ProfileValueUtils.goalRelieveBackPain, l10n.goalRelieveBackPain),
+      (ProfileValueUtils.goalStrengthenCore, l10n.goalStrengthenCore),
+      (ProfileValueUtils.goalRecoverFromInjury, l10n.goalRecoverFromInjury),
+      (ProfileValueUtils.goalImproveFlexibility, l10n.goalImproveFlexibility),
+      (ProfileValueUtils.goalMaintainGeneralTone, l10n.goalMaintainGeneralTone),
     ];
 
     return SingleChildScrollView(
@@ -450,24 +514,26 @@ class _OnboardingPageState extends State<OnboardingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Твоя цель',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            l10n.onboardingGoalsTitle,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Что для тебя сейчас важнее всего?',
+            l10n.onboardingGoalsText,
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
 
           // Goals list
           ...goals.map((goal) {
-            final isSelected = _goal == goal;
+            final goalCode = goal.$1;
+            final goalLabel = goal.$2;
+            final isSelected = _goal == goalCode;
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: GestureDetector(
-                onTap: () => setState(() => _goal = goal),
+                onTap: () => setState(() => _goal = goalCode),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -493,7 +559,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          goal,
+                          goalLabel,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: isSelected

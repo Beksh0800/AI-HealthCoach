@@ -5,7 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'gen/app_localizations.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
@@ -16,6 +18,7 @@ import 'presentation/blocs/auth/auth_cubit.dart';
 import 'presentation/blocs/profile/profile_cubit.dart';
 import 'presentation/blocs/checkin/checkin_cubit.dart';
 import 'presentation/blocs/history/history_cubit.dart';
+import 'presentation/blocs/locale/locale_cubit.dart';
 import 'presentation/blocs/workout/workout_cubit.dart';
 
 void main() async {
@@ -64,10 +67,18 @@ void main() async {
     debugPrint('Notification init skipped on startup: $e');
   }
 
-  // Initialize locale data for Russian date formatting
+  // Initialize locale data for date formatting
   try {
     await initializeDateFormatting(
+      'kk',
+      null,
+    ).timeout(const Duration(seconds: 8));
+    await initializeDateFormatting(
       'ru',
+      null,
+    ).timeout(const Duration(seconds: 8));
+    await initializeDateFormatting(
+      'en',
       null,
     ).timeout(const Duration(seconds: 8));
   } catch (e) {
@@ -91,14 +102,29 @@ class AIHealthCoachApp extends StatelessWidget {
         BlocProvider<CheckInCubit>(create: (_) => sl<CheckInCubit>()),
         BlocProvider<HistoryCubit>(create: (_) => sl<HistoryCubit>()),
         BlocProvider<WorkoutCubit>(create: (_) => sl<WorkoutCubit>()),
+        BlocProvider<LocaleCubit>(
+          create: (_) => LocaleCubit()..loadSavedLocale(),
+        ),
       ],
-      child: MaterialApp.router(
-        title: 'AI-HealthCoach',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        routerConfig: AppRouter.router,
+      child: BlocBuilder<LocaleCubit, Locale>(
+        builder: (context, locale) {
+          return MaterialApp.router(
+            onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.light,
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            routerConfig: AppRouter.router,
+          );
+        },
       ),
     );
   }

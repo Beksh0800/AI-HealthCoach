@@ -1,0 +1,10 @@
+arb-dir: lib/l10n
+output-dir: lib/gen
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+preferred-supported-locales:
+  - kk
+  - ru
+  - en
+nullable-getter: false
+untranslated-messages-file: lib/l10n/untranslated.json

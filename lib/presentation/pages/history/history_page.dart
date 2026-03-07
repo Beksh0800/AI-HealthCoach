@@ -8,7 +8,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/di/injection_container.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/workout_localization_utils.dart';
 import '../../../data/models/workout_history_model.dart';
+import '../../../gen/app_localizations.dart';
 import '../../blocs/history/history_cubit.dart';
 
 class HistoryPage extends StatelessWidget {
@@ -118,14 +120,14 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           SizedBox(
             width: 28,
             height: 28,
             child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
           SizedBox(height: 12),
-          Text('Загружаем историю...'),
+          Text(AppLocalizations.of(context).historyLoading),
         ],
       ),
     );
@@ -144,15 +146,15 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
               color: AppColors.error,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Нет подключения к интернету.\nПовторите после подключения к интернету.',
+            Text(
+              AppLocalizations.of(context).historyOffline,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _reloadHistory,
               icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              label: Text(AppLocalizations.of(context).historyOfflineRetry),
             ),
           ],
         ),
@@ -169,10 +171,10 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           children: [
             const Icon(Icons.error_outline, size: 44, color: AppColors.warning),
             const SizedBox(height: 12),
-            const Text(
-              'Не удалось загрузить историю',
+            Text(
+              AppLocalizations.of(context).historyLoadError,
               textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center),
@@ -180,7 +182,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             OutlinedButton.icon(
               onPressed: _reloadHistory,
               icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              label: Text(AppLocalizations.of(context).historyOfflineRetry),
             ),
           ],
         ),
@@ -192,7 +194,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('История и Прогресс'),
+        title: Text(AppLocalizations.of(context).historyTitle),
 
         // Leading button removed for top-level tab
         actions: [
@@ -240,9 +242,12 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                     ),
                     const SizedBox(height: 24),
                   ],
-                  const Text(
-                    'Последние тренировки',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    AppLocalizations.of(context).historyRecentWorkouts,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (state.history.isEmpty)
@@ -285,7 +290,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
         children: [
           _buildStatItem(
             state.totalWorkouts.toString(),
-            'Тренировок',
+            AppLocalizations.of(context).historyWorkoutsLabel,
             Icons.fitness_center,
           ),
           Container(
@@ -293,7 +298,11 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             height: 40,
             color: Colors.white.withValues(alpha: 0.3),
           ),
-          _buildStatItem(state.totalMinutes.toString(), 'Минут', Icons.timer),
+          _buildStatItem(
+            state.totalMinutes.toString(),
+            AppLocalizations.of(context).historyMinutesLabel,
+            Icons.timer,
+          ),
         ],
       ),
     );
@@ -343,9 +352,9 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             labelColor: Colors.white,
             unselectedLabelColor: AppColors.textSecondary,
             dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: 'Неделя'),
-              Tab(text: 'Месяц'),
+            tabs: [
+              Tab(text: AppLocalizations.of(context).historyTabWeek),
+              Tab(text: AppLocalizations.of(context).historyTabMonth),
             ],
           ),
         ),
@@ -387,7 +396,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             touchTooltipData: BarTouchTooltipData(
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 return BarTooltipItem(
-                  '${rod.toY.toInt()} мин',
+                  '${rod.toY.toInt()} ${AppLocalizations.of(context).historyMinShort}',
                   const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -535,7 +544,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                   final daysAgo = lastIndex - index;
                   final date = _todayDate().subtract(Duration(days: daysAgo));
                   return LineTooltipItem(
-                    '${DateFormat('dd.MM').format(date)}\n${_formatYAxisValue(spot.y)} мин',
+                    '${DateFormat('dd.MM').format(date)}\n${_formatYAxisValue(spot.y)} ${AppLocalizations.of(context).historyMinShort}',
                     const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -681,9 +690,9 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Типы тренировок',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).historyTypesTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Container(
@@ -773,7 +782,16 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
   // ────────────────────── History Card ──────────────────────
 
   Widget _buildHistoryCard(WorkoutHistory workout) {
-    final dateFormat = DateFormat('d MMM, HH:mm', 'ru');
+    final locale = Localizations.localeOf(context).languageCode;
+    final dateFormat = DateFormat('d MMM, HH:mm', locale);
+    final l10n = AppLocalizations.of(context);
+    final localizedTitle = WorkoutLocalizationUtils.localizedWorkoutTitle(
+      l10n: l10n,
+      localeCode: locale,
+      type: workout.type,
+      rawTitle: workout.title,
+      sourceLanguageCode: workout.languageCode,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -790,7 +808,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
           child: Icon(_getIconForType(workout.type), color: AppColors.primary),
         ),
         title: Text(
-          workout.title,
+          localizedTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
@@ -815,7 +833,10 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
                 Icon(Icons.flash_on, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
-                  workout.intensityLabel,
+                  WorkoutLocalizationUtils.localizedIntensity(
+                    l10n,
+                    workout.intensity,
+                  ),
                   style: const TextStyle(fontSize: 12),
                 ),
               ],
@@ -835,7 +856,7 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
             const Icon(Icons.history, size: 64, color: Color(0xFFE5E7EB)),
             const SizedBox(height: 16),
             Text(
-              'История пуста',
+              AppLocalizations.of(context).historyEmpty,
               style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
             ),
           ],
@@ -893,19 +914,21 @@ class _HistoryPageContentState extends State<_HistoryPageContent>
 
   String _getDayLabel(int index) {
     final date = _todayDate().subtract(Duration(days: 6 - index));
-    return DateFormat('E', 'ru').format(date);
+    final locale = Localizations.localeOf(context).languageCode;
+    return DateFormat('E', locale).format(date);
   }
 
   String _getTypeLabel(String type) {
+    final l = AppLocalizations.of(context);
     switch (type) {
       case 'lfk':
-        return 'ЛФК';
+        return l.historyTypeLfk;
       case 'stretching':
-        return 'Растяжка';
+        return l.historyTypeStretching;
       case 'strength':
-        return 'Силовая';
+        return l.historyTypeStrength;
       case 'cardio':
-        return 'Кардио';
+        return l.historyTypeCardio;
       default:
         return type;
     }

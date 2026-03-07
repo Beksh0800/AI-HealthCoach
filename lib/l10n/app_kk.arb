@@ -1,0 +1,755 @@
+{
+  "@@locale": "kk",
+  "appName": "AI Health Coach",
+  "@appName": {
+    "description": "ТљРѕР»РґР°РЅР±Р°РЅС‹ТЈ Р°С‚Р°СѓС‹"
+  },
+  "splashSubtitle": "Сенің жеке жаттықтырушың",
+  "onboardingErrorAuth": "Қате: пайдаланушы жүйеге кірмеген",
+  "onboardingErrorSave": "Профильді сақтау мүмкін болмады. Кейінірек қайталаңыз.",
+  "onboardingRetry": "Қайталау",
+  "onboardingBtnBack": "Артқа",
+  "onboardingBtnNext": "Алға",
+  "onboardingBtnFinish": "Аяқтау",
+  "onboardingWelcomeTitle": "Қош келдіңіз!",
+  "onboardingWelcomeText": "Жаттығулар қауіпсіз әрі тиімді болуы үшін сіздің жеке денсаулық профиліңізді жасайық.",
+  "onboardingBasicTitle": "Өзіңіз туралы айтыңыз",
+  "onboardingNameField": "Атыңыз",
+  "onboardingGenderTitle": "Жынысыңыз",
+  "onboardingGenderMale": "Ер",
+  "onboardingGenderFemale": "Әйел",
+  "onboardingGenderNotSpecified": "Көрсетпеу",
+  "onboardingAgeText": "Жасы: {age} жас",
+  "@onboardingAgeText": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingWeightText": "Салмағы: {weight} кг",
+  "@onboardingWeightText": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingActivityLevelTitle": "Белсенділік деңгейі",
+  "onboardingHealthTitle": "Денсаулыққа қатысты мәселелер",
+  "onboardingHealthText": "Өзіңізге қатыстысының барлығын таңдаңыз. Бұл қауіпті жаттығуларды болдырмауға көмектеседі.",
+  "onboardingHealthInfo": "Егер денсаулығыңызда ақау жоқ болса, жай ғана \"Алға\" түймесін басыңыз",
+  "onboardingGoalsTitle": "Сіздің мақсатыңыз",
+  "onboardingGoalsText": "Дәл қазір сізге не маңызды?",
+  "goalRelieveBackPain": "Арқа ауруынан құтылу",
+  "goalStrengthenCore": "Бұлшықет корсетін қатайту",
+  "goalRecoverFromInjury": "Жарақаттан кейін қалпына келу",
+  "goalImproveFlexibility": "Икемділікті жақсарту",
+  "goalMaintainGeneralTone": "Жалпы тонусты сақтау",
+  "loginTitle": "Қайта оралуыңызбен!",
+  "loginSubtitle": "Жаттығуды жалғастыру үшін кіріңіз",
+  "loginEmailLabel": "Электрондық пошта",
+  "loginPasswordLabel": "Құпия сөз",
+  "loginForgotPassword": "Құпия сөзді ұмыттыңыз ба?",
+  "loginButton": "Кіру",
+  "loginNoAccount": "Есептік жазбаңыз жоқ па?",
+  "loginRegisterLink": "Тіркелу",
+  "loginResetSent": "Құпия сөзді қалпына келтіру сілтемесі жіберілді",
+  "loginFillEmail": "Алдымен email енгізіңіз",
+  "registerTitle": "Тіркелу",
+  "registerSubtitle": "Тренеріңізбен танысу үшін тіркеліңіз",
+  "registerNameLabel": "Аты",
+  "registerEmailLabel": "Электрондық пошта",
+  "registerPasswordLabel": "Құпия сөз",
+  "registerConfirmPasswordLabel": "Құпия сөзді қайталаңыз",
+  "registerButton": "Тіркелу",
+  "registerHaveAccount": "Есептік жазбаңыз бар ма?",
+  "registerLoginLink": "Кіру",
+  "registerPasswordMismatch": "Құпия сөздер сәйкес келмейді",
+  "homeGreeting": "Сәлем, {name}! 👋",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeGreetingDefault": "Сәлем! 👋",
+  "homeSubtitle": "Бүгін көңіл күйіңіз қалай?",
+  "homeStartCheckin": "✅  Бүгінгі сауалнамадан өту",
+  "homeCheckinDone": "✅  Сауалнама аяқталды",
+  "homeSectionWorkouts": "Жылдам тренировка",
+  "homeWorkoutLfk": "ЕДШ",
+  "homeWorkoutStretching": "Созылу",
+  "homeWorkoutStrength": "Күштік",
+  "homeWorkoutCardio": "Кардио",
+  "homeCheckinNotice": "Жаттығуды бастау алдында сауалнамадан өтіңіз",
+  "homeProfileNotLoaded": "Профиль жүктелмеді. Кейінірек қайталаңыз.",
+  "checkinTitle": "Өзіңізді қалай сезінесіз?",
+  "checkinMoodLabel": "Көңіл-күй",
+  "checkinEnergyLabel": "Энергия",
+  "checkinPainLabel": "Ауру деңгейі",
+  "checkinSleepLabel": "Ұйқы сапасы",
+  "checkinStressLabel": "Стресс",
+  "checkinButton": "Жалғастыру",
+  "checkinMoodHints": "Жаман;Нашар;Қалыпты;Жақсы;Тамаша",
+  "checkinEnergyHints": "Өте төмен;Төмен;Қалыпты;Жоғары;Толы энергия",
+  "checkinPainHints": "Өте қатты;Қатты;Орташа;Аздап;Жоқ",
+  "checkinSleepHints": "Өте нашар;Нашар;Қалыпты;Жақсы;Тамаша",
+  "checkinStressHints": "Өте жоғары;Жоғары;Орташа;Төмен;Жоқ",
+  "historyTitle": "Тарих",
+  "historyTabStats": "Статистика",
+  "historyTabWorkouts": "Жаттығулар",
+  "historyWeekChart": "Аптадағы тренировкалар",
+  "historyWorkoutsCount": "Жаттығулар",
+  "historyTotalMinutes": "Жалпы минут",
+  "historyByType": "Түрлер бойынша",
+  "historyEmpty": "Тарих бос",
+  "historyLoading": "Тарих жүктелуде...",
+  "historyOffline": "Интернетке қосылым жоқ.\\nИнтернетке қосылғаннан кейін қайталаңыз.",
+  "historyOfflineRetry": "Қайталау",
+  "historyLoadError": "Тарихты жүктеу мүмкін болмады",
+  "historyRecentWorkouts": "Соңғы жаттығулар",
+  "historyTabWeek": "Апта",
+  "historyTabMonth": "Ай",
+  "historyWorkoutsLabel": "Тренировка",
+  "historyMinutesLabel": "Минут",
+  "historyTypesTitle": "Жаттығу түрлері",
+  "historyMinShort": "мин",
+  "historyTypeLfk": "ЕДШ",
+  "historyTypeStretching": "Созылу",
+  "historyTypeStrength": "Күштік",
+  "historyTypeCardio": "Кардио",
+  "profileTitle": "Профиль",
+  "profileSettingsTooltip": "Баптаулар",
+  "profileSectionPersonal": "Жеке деректер",
+  "profileAge": "Жасы",
+  "profileAgeValue": "{age} жас",
+  "@profileAgeValue": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "profileHeight": "Бойы",
+  "profileHeightValue": "{height} см",
+  "@profileHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "profileWeight": "Салмағы",
+  "profileWeightValue": "{weight} кг",
+  "@profileWeightValue": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "profileGender": "Жынысы",
+  "profileSectionHealth": "Денсаулық және Мақсаттар",
+  "profileActivity": "Белсенділік",
+  "profileGoal": "Мақсат",
+  "profileLimitations": "Шектеулер",
+  "profileLogout": "Аккаунттан шығу",
+  "profileLoadError": "Профильді жүктеу мүмкін болмады",
+  "profileNotFound": "Профиль табылмады",
+  "profileNotFoundMessage": "Сауалнаманы толтырыңыз немесе экранды жаңартыңыз.",
+  "profileLoading": "Профиль жүктелуде...",
+  "profileOffline": "Интернетке қосылым жоқ.\\nИнтернетке қосылғаннан кейін қайталаңыз.",
+  "profileRetry": "Қайталау",
+  "profileGenderMale": "Ер",
+  "profileGenderFemale": "Әйел",
+  "profileGenderNotSpecified": "Көрсетілмеген",
+  "profileActivityLow": "Төмен",
+  "profileActivityModerate": "Орташа",
+  "profileActivityHigh": "Жоғары",
+  "editProfileTitle": "Профильді өзгерту",
+  "editProfileSectionBasic": "Негізгі",
+  "editProfileNameLabel": "Аты",
+  "editProfileGenderLabel": "Жынысы",
+  "editProfileGenderMale": "Ер",
+  "editProfileGenderFemale": "Әйел",
+  "editProfileGenderNotSpecified": "Көрсетілмеген",
+  "editProfileSectionPhysical": "Дене көрсеткіштері",
+  "editProfileAgeLabel": "Жасы",
+  "editProfileHeightLabel": "Бойы (см)",
+  "editProfileWeightLabel": "Салмағы (кг)",
+  "editProfileSectionGoals": "Мақсаттар мен Белсенділік",
+  "editProfileActivityLabel": "Белсенділік деңгейі",
+  "editProfileActivityLow": "Төмен (отырыс)",
+  "editProfileActivityModerate": "Орташа (1-3 жаттығу)",
+  "editProfileActivityHigh": "Жоғары (3+ жаттығу)",
+  "editProfileGoalsLabel": "Мақсаттар",
+  "editProfileSectionInjuries": "Жарақаттар мен шектеулер",
+  "editProfileAddInjuryLabel": "Жарақат/шектеу қосу",
+  "editProfileAddInjuryHint": "Мысалы: тізедегі ауру",
+  "editProfileAddButton": "Қосу",
+  "editProfileCancel": "Болдырмау",
+  "editProfileSave": "Сақтау",
+  "editProfileValidateName": "Атыңызды енгізіңіз",
+  "editProfileValidateNameLength": "Аты {max} таңбадан аспауы керек",
+  "@editProfileValidateNameLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateAge": "Дұрыс жасты енгізіңіз",
+  "editProfileValidateAgeRange": "Жасы {min}-{max}",
+  "@editProfileValidateAgeRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateHeight": "Дұрыс бойды енгізіңіз",
+  "editProfileValidateHeightRange": "Бой {min}-{max} см",
+  "@editProfileValidateHeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateWeight": "Дұрыс салмақты енгізіңіз",
+  "editProfileValidateWeightRange": "Салмақ {min}-{max} кг",
+  "@editProfileValidateWeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateGoalsLength": "Мақсат {max} таңбадан аспауы керек",
+  "@editProfileValidateGoalsLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileInjuryTooLong": "Шектеу {max} таңбадан аспауы керек",
+  "@editProfileInjuryTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileMaxInjuries": "{max} шектеуге дейін қосуға болады",
+  "@editProfileMaxInjuries": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTitle": "Баптаулар",
+  "settingsReminderTitle": "Жаттығу еске салулары",
+  "settingsReminderSubtitle": "Еске салу уақыты мен күндерін баптаңыз",
+  "settingsReminderEnable": "Еске салуларды қосу",
+  "settingsReminderActive": "Еске салулар қосылған",
+  "settingsReminderInactive": "Еске салулар өшірілген",
+  "settingsReminderPermissionDenied": "Хабарлама рұқсаты берілмеген. Құрылғы баптауларынан қосыңыз.",
+  "settingsTimeTitle": "Еске салу уақыты",
+  "settingsDaysTitle": "Апта күндері",
+  "settingsPresetWeekdays": "Жұмыс күндері",
+  "settingsPresetEveryday": "Күн сайын",
+  "settingsPresetAlternate": "Күн арқылы",
+  "settingsDayMon": "Дс",
+  "settingsDaySun": "Жс",
+  "settingsDayTue": "Сс",
+  "settingsDayWed": "Ср",
+  "settingsDayThu": "Бс",
+  "settingsDayFri": "Жм",
+  "settingsDaySat": "Сб",
+  "workoutSelectionTitle": "Жаттығу таңдау",
+  "workoutSelectionQuestion": "Бүгін қандай жаттығуды қалайсыз?",
+  "workoutSelectionHint": "Жаттығу түрін таңдаңыз, AI жеке бағдарлама жасайды",
+  "workoutTypeLfk": "ЕДШ",
+  "workoutTypeStretching": "Созылу",
+  "workoutTypeStrength": "Күштік",
+  "workoutTypeCardio": "Кардио",
+  "workoutDescLfk": "Қалпына келтіруге арналған емдік дене шынықтыру",
+  "workoutDescStretching": "Икемділік пен созылу жаттығулары",
+  "workoutDescStrength": "Бұлшықетті нығайтуға арналған күш жаттығулары",
+  "workoutDescCardio": "Шыдамдылыққа арналған кардио",
+  "workoutRetry": "Қайталау",
+  "workoutProfileNotLoaded": "Профиль жүктелмеді. Кейінірек қайталаңыз.",
+  "workoutCheckinRequired": "Алдымен денсаулық сауалнамасынан өтіңіз",
+  "workoutSavedWorkouts": "Сақталған жаттығулар",
+  "workoutMinutesShort": "{minutes} мин",
+  "@workoutMinutesShort": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSecondsUnitShort": "сек",
+  "workoutRepsUnitShort": "рет",
+  "workoutIntensityRest": "Демалыс",
+  "workoutIntensityLight": "Жеңіл",
+  "workoutIntensityModerate": "Орташа",
+  "workoutIntensityHigh": "Жоғары",
+  "workoutTimeAgoMinutes": "{count} мин бұрын",
+  "@workoutTimeAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoHours": "{count} сағ бұрын",
+  "@workoutTimeAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoDays": "{count} күн бұрын",
+  "@workoutTimeAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSessionTitle": "Аяқталмаған жаттығу",
+  "workoutSessionSubtitle": "Сізде сақталған жаттығу бар",
+  "workoutSessionSaved": "Сақталды: {time}",
+  "@workoutSessionSaved": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSessionContinue": "Жаттығуды жалғастыру",
+  "workoutSessionNew": "Жаңасын бастау",
+  "workoutPlanCreated": "Жаттығу жоспары құрылды",
+  "onboardingDefaultName": "Пайдаланушы",
+  "activityLevelSedentary": "Отырықшы өмір салты",
+  "activityLevelLight": "Жеңіл белсенділік",
+  "activityLevelModerate": "Орташа белсенділік",
+  "activityLevelHigh": "Жоғары белсенділік",
+  "injuryHernia": "Бел омыртқа жарығы (L4-L5, L5-S1)",
+  "injuryProtrusion": "Омыртқааралық дискілердің протрузиясы",
+  "injuryScoliosis": "Сколиоз",
+  "injuryOsteochondrosis": "Остеохондроз",
+  "injuryMeniscus": "Мениск жарақаты",
+  "injuryKneeArthrosis": "Тізе буынының артрозы",
+  "injuryHipArthrosis": "Жамбас буынының артрозы",
+  "injuryShoulder": "Иық буынының проблемалары",
+  "injuryWrist": "Білек жарақаты",
+  "injuryNeckPain": "Мойын аймағындағы ауырсыну",
+  "authErrorEmailEmpty": "Email енгізіңіз",
+  "authErrorEmailInvalid": "Email форматы қате",
+  "authErrorPasswordEmpty": "Құпия сөзді енгізіңіз",
+  "authErrorPasswordShort": "Құпия сөз кемінде 6 таңбадан тұруы керек",
+  "authHintPasswordMin": "Кемінде 6 таңба",
+  "authHintPasswordRepeat": "Құпия сөзді қайталаңыз",
+  "authErrorPasswordConfirm": "Құпия сөзді растаңыз",
+  "workoutGenerating": "Жаттығу жасалуда \"{label}\"",
+  "@workoutGenerating": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutGeneratingAnalyzingProfile": "Профиль мен ағымдағы жағдай талданып жатыр...",
+  "workoutGeneratingSelectingSafeExercises": "Қауіпсіз жаттығулар таңдалып жатыр...",
+  "workoutGeneratingAdaptingIntensity": "Қарқын жағдайыңызға бейімделіп жатыр...",
+  "workoutGeneratingCreatingProgram": "Жеке бағдарлама құрылып жатыр...",
+  "workoutGeneratingValidatingSafety": "Жоспар қауіпсіздігі тексеріліп жатыр...",
+  "workoutCancel": "Болдырмау",
+  "workoutPreviewTitle": "Сіздің жаттығуыңыз",
+  "workoutPreviewNotFound": "Жаттығу табылмады",
+  "workoutPreviewWarmup": "Қыздыру",
+  "workoutPreviewMain": "Негізгі жаттығулар",
+  "workoutPreviewCooldown": "Сабырлану",
+  "workoutPreviewExercises": "{count} жатт.",
+  "@workoutPreviewExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPreviewStart": "Жаттығуды бастау",
+  "workoutPlayerTitle": "Жаттығу",
+  "workoutPlayerReady": "Бастауға дайын",
+  "workoutPlayerWarmup": "Қыздыру",
+  "workoutPlayerMainPart": "Негізгі бөлім",
+  "workoutPlayerCooldown": "Сабырлану",
+  "workoutPlayerStartWorkout": "Жаттығуды бастау",
+  "workoutPlayerSkipExercise": "Жаттығуды өткізіп жіберу",
+  "workoutPlayerFinishWorkout": "Жаттығуды аяқтау",
+  "workoutPlayerPainButton": "Ауру / Ыңғайсыздық",
+  "workoutPlayerExerciseOf": "Жаттығу {current} / {total}",
+  "@workoutPlayerExerciseOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerMinutes": "МИНУТТАР",
+  "workoutPlayerSeconds": "СЕКУНДТАР",
+  "workoutPlayerReps": "ҚАЙТАЛАУ",
+  "workoutPlayerRest": "Демалыс",
+  "workoutPlayerRestSeconds": "{seconds} сек",
+  "@workoutPlayerRestSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerNextSet": "Келесі қадам: {name}",
+  "@workoutPlayerNextSet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutPlayerAutoResume": "Таймерден кейін жаттығу автоматты түрде жалғасады",
+  "workoutPlayerContinue": "Жалғастыру",
+  "workoutPlayerAiInsight": "AI ТҮСІНДІРМЕСІ",
+  "workoutPlayerAiNote": "AI дәрігер жазбасы",
+  "workoutPlayerNoDescription": "Қосымша сипаттама жоқ.",
+  "workoutPlayerAiLocalizedPending": "AI түсіндірмесін ағымдағы тілге бейімдеп жатырмыз...",
+  "workoutPlayerAiLocalizedUnavailable": "Локализацияланған AI түсіндірмесі уақытша қолжетімсіз.",
+  "workoutPlayerGotIt": "Түсіндім",
+  "workoutPlayerClose": "Жабу",
+  "workoutPlayerExitTitle": "Жаттығу аяқталды ма?",
+  "workoutPlayerExitMessage": "Прогресс сақталмайды",
+  "workoutPlayerExitCancel": "Болдырмау",
+  "workoutPlayerExitConfirm": "Аяқтау",
+  "workoutPlayerSearchUnavailable": "Бейне іздеу сілтемесі қолжетімсіз",
+  "workoutPlayerAnimation": "Анимация",
+  "painWhereTitle": "Ол қай жерде ауырады?",
+  "painIntensityTitle": "Қанша ауырады?",
+  "painActionTitle": "Біз не істейміз?",
+  "painSelectArea": "Ауру аймағын таңдаңыз",
+  "painCurrentExercise": "Ағымдағы жаттығу: {name}",
+  "@painCurrentExercise": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "painCancelContinue": "Бас тарту, жаттығуды жалғастыру",
+  "painAreaText": "Аймақ: {area}",
+  "@painAreaText": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "painRateIntensity": "Ауру қарқындылығын бағалаңыз",
+  "painLevelText": "Ауру деңгейі: {level}/10",
+  "@painLevelText": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "painLocationLowerBack": "Арқа (бел)",
+  "painLocationUpperBack": "Арқа (жоғарғы)",
+  "painLocationNeck": "Мойын",
+  "painLocationKnees": "Тізелер",
+  "painLocationShoulders": "Иықтар",
+  "painLocationWrists": "Білектер",
+  "painLocationAnkle": "Тобық",
+  "painLocationHips": "Жамбас/сан",
+  "painIntensity1": "Жеңіл ыңғайсыздық",
+  "painIntensity1Sub": "Дерлік кедергі жоқ",
+  "painIntensity2": "Әлсіз ауру",
+  "painIntensity2Sub": "Шыдауға болады",
+  "painIntensity3": "Аздаған ауру",
+  "painIntensity3Sub": "Байқалады, бірақ жалғастыруға болады",
+  "painIntensity4": "Орташа ауру",
+  "painIntensity4Sub": "Зейінге кедергі",
+  "painIntensity5": "Орташа ауру",
+  "painIntensity5Sub": "Техниканы өзгерту керек",
+  "painIntensity6": "Байқалатын ауру",
+  "painIntensity6Sub": "Жалғастыру қиын",
+  "painIntensity7": "Қатты ауру",
+  "painIntensity7Sub": "Үзіліс қажет",
+  "painIntensity8": "Өте қатты ауру",
+  "painIntensity8Sub": "Тоқтаған жөн",
+  "painIntensity9": "Өткір ауру",
+  "painIntensity9Sub": "Демалыс қажет",
+  "painIntensity10": "Шыдамсыз",
+  "painIntensity10Sub": "Дәрігер қажет",
+  "painActionLightTitle": "Сіз не істегіңіз келеді?",
+  "painActionLightSubtitle": "Жеңіл ыңғайсыздық — жалғастыруға болады",
+  "painActionModerateTitle": "Сақтық ұсынылады",
+  "painActionModerateSubtitle": "Жаттығуды ауыстыруды немесе демалуды ұсынамыз",
+  "painActionSevereTitle": "⚠️ Демалыс қажет",
+  "painActionSevereSubtitle": "Қатты ауырса тоқтаған немесе демалған жөн",
+  "painActionDefault": "Әрекетті таңдаңыз",
+  "painContinueExercise": "Жаттығуды жалғастыру",
+  "painContinueSub": "Ауру шыдамды, жалғастырамын",
+  "painReplaceExercise": "Жаттығуды ауыстыру",
+  "painReplaceSub": "AI қауіпсіз балама таңдайды",
+  "painReplaceModSub": "Орташа ауырғанда ұсынылады",
+  "painBreak2min": "2 минут үзіліс",
+  "painBreak2minSub": "Қысқа демалыс",
+  "painBreak5min": "5 минут үзіліс",
+  "painBreak5minSub": "Демалыңыз және денеңізді тыңдаңыз",
+  "painBreak10min": "10 минут үзіліс",
+  "painBreak10minSub": "Ұзақ демалыс кеңестермен",
+  "painEndWorkout": "Жаттығуды аяқтау",
+  "painEndWorkoutSaveSub": "Прогресті сақтаймыз",
+  "painEndWorkoutHealthSub": "Денсаулық маңыздырақ — бүгін демалыңыз",
+  "painSevereWarning": "Қатты ауырса дәрігерге жүгінуді ұсынамыз",
+  "painRestTitle": "Үзіліс",
+  "painRestRemaining": "қалды",
+  "painRestTips": "Демалыс кеңестері:",
+  "painRestContinueEarly": "Ертерек жалғастыру",
+  "painRestTipLight": "Терең дем алыңыз және шығарыңыз.\nКерілген бұлшықеттерді босаңсытыңыз.",
+  "painRestTipModerate": "Ауру аймағын ақырын уқалаңыз.\nСу ішіңіз және тыныш тыныс алыңыз.",
+  "painRestTipSevere": "Толық босаңсыңыз.\nАуру басылмаса, дәрігерге жүгініңіз.",
+  "painReplacingTitle": "Балама іздеу",
+  "painReplacingText": "AI қауіпсіз ауыстыру іздеуде",
+  "painReplacingArea": "Ауру аймағы: {area}",
+  "@painReplacingArea": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "completionTitle": "Тамаша жұмыс!",
+  "completionMinutes": "{minutes} мин",
+  "@completionMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "completionExercises": "{count} жатт.",
+  "@completionExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionPainReports": "Ауру шағымдары: {count}",
+  "@completionPainReports": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionAnalyzing": "AI жаттығуыңызды талдауда...",
+  "completionTips": "Кеңестер ({count})",
+  "@completionTips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionShowAll": "Барлығын көрсету",
+  "completionCollapse": "Жинау",
+  "completionRecoveryPlan": "Қалпына келтіру жоспары",
+  "completionRecoveryBrief": "Қысқаша, шамадан тыс жүктемесіз",
+  "completionRecoveryExpand": "Қадамдарды көру үшін ашыңыз",
+  "completionRestDuration": "Демалыс: {duration}",
+  "@completionRestDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "completionHideSteps": "Қадамдарды жасыру",
+  "completionMoreSteps": "Тағы қадамдар ({count})",
+  "@completionMoreSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionNutrition": "Тамақтану",
+  "completionSleep": "Ұйқы",
+  "completionGoHome": "Басты бетке",
+  "categoryBack": "Арқа",
+  "categoryLegs": "Аяқтар",
+  "categoryArms": "Қолдар",
+  "categoryCore": "Кор",
+  "categoryNeck": "Мойын",
+  "categoryGeneral": "Жалпы",
+  "homeOffline": "Интернетке қосылу жоқ.\\nИнтернетке қосылғаннан кейін қайталаңыз.",
+  "homeOfflineRetry": "Қайталау",
+  "videoYoutube": "YouTube бейне",
+  "videoNetwork": "Бейне",
+  "videoSearchAvailable": "Бейне YouTube іздеу арқылы қолжетімді",
+  "videoOpenSearch": "Қолданбада іздеуді ашыңыз",
+  "videoUnsupported": "Бейне қолжетімді емес",
+  "navHome": "Басты бет",
+  "navWorkout": "Жаттығу",
+  "navHistory": "Тарих",
+  "navProfile": "Профиль",
+  "navExitPrompt": "Шығу үшін \"Артқа\" түймесін тағы бір рет басыңыз",
+  "routeNotFound": "Бет табылмады",
+  "checkinSummaryLight": "Бүгін жеңіл жаттығу ұсынылады.",
+  "homeUser": "Пайдаланушы",
+  "profileRestrictions": "Шектеулер",
+  "settingsConfigureReminders": "Еске салғыштың уақыты мен күндерін орнатыңыз",
+  "energyVeryHigh": "Өте жоғары",
+  "checkinNoPain": "Ауыруы жоқ",
+  "homeLoadingData": "Деректер жүктелуде...",
+  "settingsWorkoutReminders": "Жаттығу туралы еске салғыштар",
+  "homeProgress": "Прогресс",
+  "checkinNotes": "Ескертпелер",
+  "homeMinutes": "Минут",
+  "checkinPainLevel": "Ауырсыну деңгейі",
+  "settingsDaysOfWeek": "Аптаның күндері",
+  "energyVeryLow": "Өте төмен",
+  "settingsRemindersOff": "Еске салғыштар өшірілген",
+  "checkinSummaryRest": "Бүгін демалу және қалпына келтіру ұсынылады.",
+  "homeTotalMinutes": "Жалпы минуттар",
+  "checkinSymptomsTitle": "Симптомдары",
+  "profileKg": "кг",
+  "settingsPermissionDenied": "Хабарландыру рұқсаты қабылданбады. Оны параметрлерде қосыңыз.",
+  "homeStartStreak": "Жолыңызды бастаңыз",
+  "profileCm": "см",
+  "checkinNotesHint": "Кез келген қосымша белгілер немесе түсініктемелер",
+  "checkinStrongPain": "Қатты ауырсыну",
+  "checkinWhereHurts": "Ол қай жерде ауырады?",
+  "homeQuickActions": "Жылдам әрекеттер",
+  "homeStreakDays": "{count}-күндік кезең",
+  "@homeStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkinToWorkout": "Жаттығуға барыңыз",
+  "settingsRemindersActive": "Еске салғыштар қосылды",
+  "checkinRedoSurvey": "Сауалнаманы қайталаңыз",
+  "homeGoodEvening": "Қайырлы кеш",
+  "checkinSummaryGreat": "Ұлы мемлекет. Сіз толық жаттығу жасай аласыз.",
+  "checkinBetterRest": "Бүгін демалып, қалпына келген дұрыс",
+  "energyLow": "Төмен",
+  "checkinSleep": "Ұйқы",
+  "checkinSleepQuality": "Ұйқы сапасы",
+  "homeLoadingAnalytics": "Аналитика жүктелуде...",
+  "checkinAlreadyCompleted": "Бүгінгі тіркелу қазірдің өзінде аяқталды",
+  "profileYears": "жылдар",
+  "homeTapForDetailedStats": "Егжей-тегжейлі статистиканы көру үшін түртіңіз",
+  "checkinRecommendation": "Ұсыныс",
+  "settingsEveryDay": "Күн сайын",
+  "homeAverage": "Орташа",
+  "checkinMood": "Көңіл-күй",
+  "energyHigh": "Жоғары",
+  "settingsReminderTime": "Еске салу уақыты",
+  "checkinRecommendedIntensity": "Ұсынылатын қарқындылық: {intensity}",
+  "@checkinRecommendedIntensity": {
+    "placeholders": {
+      "intensity": {
+        "type": "String"
+      }
+    }
+  },
+  "profileHealthGoals": "Денсаулық және мақсаттар",
+  "homeGoodAfternoon": "Қайырлы күн",
+  "settingsEnableReminders": "Еске салғыштарды қосыңыз",
+  "homeStatistics": "Статистика",
+  "checkinSleepBad": "Нашар",
+  "homeThisWeek": "Осы аптада",
+  "homeReadyForWorkout": "Бүгінгі жаттығуға дайынсыз ба?",
+  "homeGoodMorning": "Қайырлы таң",
+  "checkinTryAgain": "Қайтадан байқап көріңіз",
+  "checkinEnergyLevel": "Энергия деңгейі",
+  "checkinSymptomsDescription": "Бүгін сезінген барлық белгілерді таңдаңыз",
+  "checkinMoodTitle": "Сіздің көңіл-күйіңіз",
+  "profileMyProfile": "Менің профилім",
+  "checkinPainDescription": "Ағымдағы ауырсыну деңгейін бағалаңыз",
+  "checkinSleepGreat": "Тамаша",
+  "homeWorkouts": "Жаттығулар",
+  "homeAiRecommendations": "AI ұсыныстары",
+  "checkinMoodDescription": "Бүгінгі эмоционалдық жағдайыңыз қалай?",
+  "checkinMoodHappy": "Тамаша",
+  "checkinMoodEnergized": "Қуатты",
+  "checkinMoodNeutral": "Қалыпты",
+  "checkinMoodTired": "Шаршадым",
+  "checkinMoodStressed": "Күйзеліс",
+  "checkinSymptomHeadache": "Бас ауруы",
+  "checkinSymptomBackPain": "Арқа ауруы",
+  "checkinSymptomMuscleStiffness": "Бұлшықет қаттылығы",
+  "checkinSymptomFatigue": "Шаршау",
+  "checkinSymptomNausea": "Жүрек айну",
+  "checkinSymptomDizziness": "Бас айналу",
+  "checkinPainLocationOther": "Басқа",
+  "checkinSummaryModerate": "Орташа жаттығу ұсынылады.",
+  "checkinEnergy": "Энергия",
+  "settingsWeekdays": "Жұмыс күндері",
+  "profileSignOut": "Шығу",
+  "energyMedium": "Орташа",
+  "settingsEveryOtherDay": "Екі күн сайын",
+  "profilePersonalData": "Жеке деректер",
+  "homeProgressStart": "Прогрессіңізді бүгін бастаңыз",
+  "checkinEnergyDescription": "Дәл қазір сізде қанша энергия бар?",
+  "settingsLanguage": "Тіл",
+  "settingsLanguageHint": "Қолданба тілін таңдаңыз",
+  "languageKk": "Қазақша",
+  "languageRu": "Орысша",
+  "languageEn": "Ағылшынша",
+  "errorNoConnection": "Интернетке қосылым жоқ",
+  "errorTimeout": "Күту уақыты асты. Кейінірек қайталаңыз.",
+  "errorAIQuota": "AI квотасы таусыпты. Кейінірек қайталаңыз.",
+  "errorAIUnavailable": "AI-қызмет уақыша қолжетімсіз. Кейінірек қайталаңыз.",
+  "errorAINotConfigured": "AI-қызмет бапталмаған. Әкімшіге хабарласыңыз.",
+  "errorAIEmpty": "AI-дан бос жауап. Қайталаңыз.",
+  "errorAIParse": "AI жауабын өңдеу қатесі. Қайталаңыз.",
+  "errorGenerateWorkout": "Жаттығуды жасау мүмкін болмады. Кейінірек қайталаңыз.",
+  "errorSaveCheckin": "Сауалнаманы сақтау мүмкін болмады. Кейінірек қайталаңыз.",
+  "errorLoadCheckin": "Сауалнаманы жүктеу мүмкін болмады. Қосылымды тексеріңіз.",
+  "errorSaveProfile": "Профильді жаңарту мүмкін болмады. Кейінірек қайталаңыз.",
+  "errorLoadProfile": "Профильді жүктеу мүмкін болмады. Қосылымды тексеріңіз.",
+  "errorAuthStatus": "Авторизация мәртебін тексеру мүмкін болмады",
+  "errorAuthSignIn": "Кіру мүмкін болмады. Кейінірек қайталаңыз.",
+  "errorAuthSignUp": "Тіркелу мүмкін болмады. Кейінірек қайталаңыз.",
+  "errorGeneral": "Қате орын алды. Қайталаңыз.",
+  "errorPermissionDenied": "Әрекетті орындау үшін құқықтар жеткіліксіз",
+  "errorTooManyRequests": "Өтінірек көп әрекет. Кейінірек қайталаңыз.",
+  "errorInvalidCredentials": "Жүйе немесе құпия сөз қате",
+  "errorEmailInUse": "Бұл email қазірдең тіркелген",
+  "errorWeakPassword": "Құпия сөз кемінде 6 таңбадан тұруы керек",
+  "errorNotAuthenticated": "Пайдаланушы авторизацияланбаған"
+}

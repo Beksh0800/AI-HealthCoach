@@ -1,14 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/router/app_router.dart';
+import '../../core/router/tab_branch_navigation.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/constants/prompt_templates.dart';
 import '../../core/di/injection_container.dart';
+import '../../core/utils/profile_localization_utils.dart';
+import '../../core/utils/profile_value_utils.dart';
 import '../../data/models/workout_model.dart';
 import '../../data/services/workout_analytics_service.dart';
 import '../blocs/auth/auth_cubit.dart';
@@ -122,14 +125,14 @@ class _HomePageState extends State<HomePage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           SizedBox(
             width: 28,
             height: 28,
             child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
           SizedBox(height: 12),
-          Text('Загружаем данные...'),
+          Text(AppLocalizations.of(context).homeLoadingData),
         ],
       ),
     );
@@ -148,15 +151,15 @@ class _HomePageState extends State<HomePage> {
               color: AppColors.error,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Нет подключения к интернету.\nПовторите после подключения к интернету.',
+            Text(
+              AppLocalizations.of(context).homeOffline,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _reloadHomeData,
               icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
+              label: Text(AppLocalizations.of(context).homeOfflineRetry),
             ),
           ],
         ),
@@ -170,13 +173,11 @@ class _HomePageState extends State<HomePage> {
       final analyticsService = sl<WorkoutAnalyticsService>();
       try {
         final stats = await analyticsService.getWorkoutStats(auth.uid);
-        final suggestions = await analyticsService.getWorkoutSuggestions(
-          auth.uid,
-        );
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           setState(() {
             _workoutStats = stats;
-            _suggestions = suggestions;
+            _suggestions = _buildSuggestions(stats, l10n);
             _isLoadingAnalytics = false;
           });
           _syncHomeConnectionState();
@@ -195,9 +196,10 @@ class _HomePageState extends State<HomePage> {
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Доброе утро';
-    if (hour < 17) return 'Добрый день';
-    return 'Добрый вечер';
+    final l10n = AppLocalizations.of(context);
+    if (hour < 12) return l10n.homeGoodMorning;
+    if (hour < 17) return l10n.homeGoodAfternoon;
+    return l10n.homeGoodEvening;
   }
 
   // Removed: _onNavTap handled by ShellRoute
@@ -215,7 +217,7 @@ class _HomePageState extends State<HomePage> {
       ],
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('AI-HealthCoach'),
+          title: Text(AppLocalizations.of(context).appName),
           actions: [
             IconButton(
               icon: const Icon(Icons.logout),
@@ -259,7 +261,7 @@ class _HomePageState extends State<HomePage> {
 
                         // Quick Actions
                         Text(
-                          'Быстрые действия',
+                          AppLocalizations.of(context).homeQuickActions,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -273,7 +275,7 @@ class _HomePageState extends State<HomePage> {
 
                         // Today's stats placeholder
                         Text(
-                          'Статистика',
+                          AppLocalizations.of(context).homeStatistics,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -295,7 +297,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildGreetingCard(BuildContext context) {
     return BlocBuilder<ProfileCubit, ProfileState>(
       builder: (context, state) {
-        String userName = 'Пользователь';
+        String userName = AppLocalizations.of(context).homeUser;
         if (state is ProfileLoaded) {
           userName = state.profile.name;
         }
@@ -324,7 +326,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${_getGreeting()}, $userName! 👋',
+                          '${_getGreeting()}, $userName! \u{1F44B}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -333,7 +335,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Готов к сегодняшней тренировке?',
+                          AppLocalizations.of(context).homeReadyForWorkout,
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.white.withValues(alpha: 0.9),
@@ -362,7 +364,7 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.primary,
                 ),
-                child: const Text('Начать тренировку'),
+                child: Text(AppLocalizations.of(context).homeStartCheckin),
               ),
             ],
           ),
@@ -380,9 +382,11 @@ class _HomePageState extends State<HomePage> {
 
         final profile = state.profile;
         final medicalProfile = profile.medicalProfile;
+        final l10n = AppLocalizations.of(context);
+        final localeCode = Localizations.localeOf(context).languageCode;
 
         return GestureDetector(
-          onTap: () => context.push(AppRoutes.profile),
+          onTap: () => context.goToTabBranch(AppTabBranch.profile),
           child: Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -394,7 +398,7 @@ class _HomePageState extends State<HomePage> {
                       const Icon(Icons.person, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
-                        'Мой профиль',
+                        AppLocalizations.of(context).profileMyProfile,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
@@ -403,21 +407,34 @@ class _HomePageState extends State<HomePage> {
                   const Divider(height: 24),
                   _buildProfileRow(
                     Icons.cake,
-                    'Возраст',
-                    '${medicalProfile.age} лет',
+                    l10n.profileAge,
+                    ProfileValueUtils.formatAgeByLocale(
+                      medicalProfile.age,
+                      localeCode,
+                    ),
                   ),
                   _buildProfileRow(
                     Icons.fitness_center,
-                    'Вес',
-                    '${medicalProfile.weight.toStringAsFixed(1)} кг',
+                    l10n.profileWeight,
+                    '${medicalProfile.weight.toStringAsFixed(1)} ${l10n.profileKg}',
                   ),
                   _buildProfileRow(
                     Icons.directions_run,
-                    'Активность',
-                    _localizeActivityLevel(medicalProfile.activityLevel),
+                    l10n.profileActivity,
+                    ProfileLocalizationUtils.localizeActivity(
+                      l10n,
+                      medicalProfile.activityLevel,
+                    ),
                   ),
                   if (profile.goals.isNotEmpty)
-                    _buildProfileRow(Icons.flag, 'Цель', profile.goals),
+                    _buildProfileRow(
+                      Icons.flag,
+                      l10n.profileGoal,
+                      ProfileLocalizationUtils.localizeGoal(
+                        l10n,
+                        profile.goals,
+                      ),
+                    ),
                   if (medicalProfile.injuries.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -427,7 +444,10 @@ class _HomePageState extends State<HomePage> {
                         children: medicalProfile.injuries.map((injury) {
                           return Chip(
                             label: Text(
-                              injury,
+                              ProfileLocalizationUtils.localizeInjury(
+                                l10n,
+                                injury,
+                              ),
                               style: const TextStyle(fontSize: 12),
                             ),
                             backgroundColor: AppColors.warning.withValues(
@@ -475,7 +495,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildActionCard(
             context,
             icon: Icons.self_improvement,
-            title: 'ЛФК',
+            title: AppLocalizations.of(context).homeWorkoutLfk,
             color: AppColors.info,
             onTap: () =>
                 context.push(AppRoutes.checkIn, extra: WorkoutTypes.lfk),
@@ -486,7 +506,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildActionCard(
             context,
             icon: Icons.accessibility_new,
-            title: 'Растяжка',
+            title: AppLocalizations.of(context).homeWorkoutStretching,
             color: AppColors.secondary,
             onTap: () =>
                 context.push(AppRoutes.checkIn, extra: WorkoutTypes.stretching),
@@ -497,7 +517,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildActionCard(
             context,
             icon: Icons.sports_gymnastics,
-            title: 'Силовая',
+            title: AppLocalizations.of(context).homeWorkoutStrength,
             color: AppColors.warning,
             onTap: () =>
                 context.push(AppRoutes.checkIn, extra: WorkoutTypes.strength),
@@ -544,9 +564,11 @@ class _HomePageState extends State<HomePage> {
   Widget _buildStatsCard(BuildContext context) {
     return BlocBuilder<HistoryCubit, HistoryState>(
       builder: (context, state) {
+        final l10n = AppLocalizations.of(context);
         String workouts = '—';
         String minutes = '—';
-        String progress = 'Старт';
+        String progress = '—';
+        String? progressHint;
 
         if (state is HistoryLoaded) {
           workouts = state.totalWorkouts.toString();
@@ -554,34 +576,74 @@ class _HomePageState extends State<HomePage> {
           if (state.totalWorkouts > 0) {
             progress =
                 '${(state.totalWorkouts / 10 * 100).clamp(0, 100).toInt()}%';
+          } else {
+            progress = '0%';
+            progressHint = l10n.homeProgressStart;
           }
         } else if (state is HistoryLoading) {
           workouts = '...';
           minutes = '...';
+          progress = '...';
         }
 
         return GestureDetector(
-          onTap: () => context.push(AppRoutes.history),
+          onTap: () => context.goToTabBranch(AppTabBranch.history),
           child: Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatItem(
-                        workouts,
-                        'Тренировок',
-                        Icons.fitness_center,
+                      Expanded(
+                        child: _buildStatItem(
+                          workouts,
+                          l10n.homeWorkouts,
+                          Icons.fitness_center,
+                        ),
                       ),
-                      _buildStatItem(minutes, 'Минут', Icons.timer_outlined),
-                      _buildStatItem(progress, 'Прогресс', Icons.trending_up),
+                      Container(
+                        width: 1,
+                        height: 64,
+                        color: AppColors.textSecondary.withValues(alpha: 0.14),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          minutes,
+                          l10n.homeMinutes,
+                          Icons.timer_outlined,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 64,
+                        color: AppColors.textSecondary.withValues(alpha: 0.14),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          progress,
+                          l10n.homeProgress,
+                          Icons.trending_up,
+                        ),
+                      ),
                     ],
                   ),
+                  if (progressHint != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      progressHint,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
-                    'Нажмите для подробной статистики',
+                    l10n.homeTapForDetailedStats,
                     style: TextStyle(
                       fontSize: 10,
                       color: AppColors.textSecondary,
@@ -599,20 +661,25 @@ class _HomePageState extends State<HomePage> {
   Widget _buildStatItem(String value, String label, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary, size: 28),
+        Icon(icon, color: AppColors.primary, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -633,7 +700,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Загружаем аналитику...',
+                  AppLocalizations.of(context).homeLoadingAnalytics,
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
               ],
@@ -645,7 +712,7 @@ class _HomePageState extends State<HomePage> {
 
     final stats = _workoutStats;
     final streak = stats?.currentStreak ?? 0;
-    final streakMessage = PromptTemplates.getStreakMessage(streak);
+    final streakMessage = _getStreakMessage(context, streak);
 
     return Card(
       child: Padding(
@@ -676,7 +743,11 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        streak > 0 ? '$streak дней подряд' : 'Начните серию',
+                        streak > 0
+                            ? AppLocalizations.of(
+                                context,
+                              ).homeStreakDays(streak)
+                            : AppLocalizations.of(context).homeStartStreak,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -706,17 +777,17 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _buildMiniStat(
                     '${stats.workoutsThisWeek}',
-                    'на этой неделе',
+                    AppLocalizations.of(context).homeThisWeek,
                     Icons.calendar_today,
                   ),
                   _buildMiniStat(
                     '${stats.totalMinutes}',
-                    'всего минут',
+                    AppLocalizations.of(context).homeTotalMinutes,
                     Icons.timer,
                   ),
                   _buildMiniStat(
-                    '${stats.averageDurationMinutes}м',
-                    'в среднем',
+                    '${stats.averageDurationMinutes} ${AppLocalizations.of(context).historyMinShort}',
+                    AppLocalizations.of(context).homeAverage,
                     Icons.trending_up,
                   ),
                 ],
@@ -729,7 +800,7 @@ class _HomePageState extends State<HomePage> {
               const Divider(),
               const SizedBox(height: 12),
               Text(
-                '✨ AI-рекомендации',
+                AppLocalizations.of(context).homeAiRecommendations,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -772,16 +843,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _localizeActivityLevel(String level) {
-    switch (level.toLowerCase()) {
-      case 'low':
-        return 'Низкая';
-      case 'moderate':
-        return 'Умеренная';
-      case 'high':
-        return 'Высокая';
-      default:
-        return level;
+  String _getStreakMessage(BuildContext context, int streak) {
+    if (streak <= 0) {
+      return AppLocalizations.of(context).homeProgressStart;
     }
+    return AppLocalizations.of(context).homeReadyForWorkout;
+  }
+
+  List<String> _buildSuggestions(WorkoutStats stats, AppLocalizations l10n) {
+    final suggestions = <String>[];
+    if (stats.workoutsThisWeek == 0) {
+      suggestions.add(l10n.homeProgressStart);
+    } else {
+      suggestions.add(l10n.homeReadyForWorkout);
+    }
+
+    if (stats.currentStreak >= 3) {
+      suggestions.add(l10n.homeStreakDays(stats.currentStreak));
+    }
+
+    return suggestions;
   }
 }

@@ -1,0 +1,752 @@
+{
+  "@@locale": "en",
+  "appName": "AI Health Coach",
+  "splashSubtitle": "Your personal trainer",
+  "onboardingErrorAuth": "Error: user not authenticated",
+  "onboardingErrorSave": "Failed to save profile. Try again later.",
+  "onboardingRetry": "Retry",
+  "onboardingBtnBack": "Back",
+  "onboardingBtnNext": "Next",
+  "onboardingBtnFinish": "Finish",
+  "onboardingWelcomeTitle": "Welcome!",
+  "onboardingWelcomeText": "Let's create your personal health profile so that workouts are safe and effective.",
+  "onboardingBasicTitle": "Tell us about yourself",
+  "onboardingNameField": "Your name",
+  "onboardingGenderTitle": "Your gender",
+  "onboardingGenderMale": "Male",
+  "onboardingGenderFemale": "Female",
+  "onboardingGenderNotSpecified": "Prefer not to say",
+  "onboardingAgeText": "Age: {age} years",
+  "@onboardingAgeText": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingWeightText": "Weight: {weight} kg",
+  "@onboardingWeightText": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingActivityLevelTitle": "Activity level",
+  "onboardingHealthTitle": "Health concerns",
+  "onboardingHealthText": "Select everything that applies to you. This will help avoid dangerous exercises.",
+  "onboardingHealthInfo": "If you have no health issues, just tap \"Next\"",
+  "onboardingGoalsTitle": "Your goals",
+  "onboardingGoalsText": "What matters most to you right now?",
+  "goalRelieveBackPain": "Relieve back pain",
+  "goalStrengthenCore": "Strengthen core muscles",
+  "goalRecoverFromInjury": "Recover from injury",
+  "goalImproveFlexibility": "Improve flexibility",
+  "goalMaintainGeneralTone": "Maintain general tone",
+  "loginTitle": "Welcome back!",
+  "loginSubtitle": "Sign in to continue your workouts",
+  "loginEmailLabel": "Email",
+  "loginPasswordLabel": "Password",
+  "loginForgotPassword": "Forgot password?",
+  "loginButton": "Sign In",
+  "loginNoAccount": "Don't have an account? ",
+  "loginRegisterLink": "Sign Up",
+  "loginResetSent": "Password reset link has been sent",
+  "loginFillEmail": "Enter your email first",
+  "registerTitle": "Sign Up",
+  "registerSubtitle": "Create an account to work with your coach",
+  "registerNameLabel": "Name",
+  "registerEmailLabel": "Email",
+  "registerPasswordLabel": "Password",
+  "registerConfirmPasswordLabel": "Confirm password",
+  "registerButton": "Sign Up",
+  "registerHaveAccount": "Already have an account? ",
+  "registerLoginLink": "Sign In",
+  "registerPasswordMismatch": "Passwords do not match",
+  "homeGreeting": "Hi, {name}!",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeGreetingDefault": "Hello!",
+  "homeSubtitle": "How are you feeling today?",
+  "homeStartCheckin": "Complete daily check-in",
+  "homeCheckinDone": "Check-in completed",
+  "homeSectionWorkouts": "Quick workout",
+  "homeWorkoutLfk": "PT",
+  "homeWorkoutStretching": "Stretching",
+  "homeWorkoutStrength": "Strength",
+  "homeWorkoutCardio": "Cardio",
+  "homeCheckinNotice": "Complete the check-in before starting a workout",
+  "homeProfileNotLoaded": "Profile not loaded. Try again later.",
+  "checkinTitle": "How are you feeling?",
+  "checkinMoodLabel": "Mood",
+  "checkinEnergyLabel": "Energy",
+  "checkinPainLabel": "Pain level",
+  "checkinSleepLabel": "Sleep quality",
+  "checkinStressLabel": "Stress",
+  "checkinButton": "Continue",
+  "checkinMoodHints": "Terrible;Bad;Normal;Good;Great",
+  "checkinEnergyHints": "Very low;Low;Normal;High;Full of energy",
+  "checkinPainHints": "Very strong;Strong;Moderate;Mild;None",
+  "checkinSleepHints": "Very bad;Bad;Normal;Good;Excellent",
+  "checkinStressHints": "Very high;High;Moderate;Low;None",
+  "historyTitle": "History",
+  "historyTabStats": "Statistics",
+  "historyTabWorkouts": "Workouts",
+  "historyWeekChart": "Workouts this week",
+  "historyWorkoutsCount": "Workouts",
+  "historyTotalMinutes": "Total minutes",
+  "historyByType": "By type",
+  "historyEmpty": "History is empty",
+  "historyLoading": "Loading history...",
+  "historyOffline": "No internet connection.\nTry again after connecting.",
+  "historyOfflineRetry": "Retry",
+  "historyLoadError": "Failed to load history",
+  "historyRecentWorkouts": "Recent workouts",
+  "historyTabWeek": "Week",
+  "historyTabMonth": "Month",
+  "historyWorkoutsLabel": "Workouts",
+  "historyMinutesLabel": "Minutes",
+  "historyTypesTitle": "Workout types",
+  "historyMinShort": "min",
+  "historyTypeLfk": "PT",
+  "historyTypeStretching": "Stretching",
+  "historyTypeStrength": "Strength",
+  "historyTypeCardio": "Cardio",
+  "profileTitle": "Profile",
+  "profileSettingsTooltip": "Settings",
+  "profileSectionPersonal": "Personal info",
+  "profileAge": "Age",
+  "profileAgeValue": "{age} years",
+  "@profileAgeValue": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "profileHeight": "Height",
+  "profileHeightValue": "{height} cm",
+  "@profileHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "profileWeight": "Weight",
+  "profileWeightValue": "{weight} kg",
+  "@profileWeightValue": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "profileGender": "Gender",
+  "profileSectionHealth": "Health & Goals",
+  "profileActivity": "Activity",
+  "profileGoal": "Goal",
+  "profileLimitations": "Limitations",
+  "profileLogout": "Sign out",
+  "profileLoadError": "Failed to load profile",
+  "profileNotFound": "Profile not found",
+  "profileNotFoundMessage": "Complete the survey or refresh the screen.",
+  "profileLoading": "Loading profile...",
+  "profileOffline": "No internet connection.\nTry again after connecting to the network.",
+  "profileRetry": "Retry",
+  "profileGenderMale": "Male",
+  "profileGenderFemale": "Female",
+  "profileGenderNotSpecified": "Not specified",
+  "profileActivityLow": "Low",
+  "profileActivityModerate": "Moderate",
+  "profileActivityHigh": "High",
+  "editProfileTitle": "Edit Profile",
+  "editProfileSectionBasic": "Basic",
+  "editProfileNameLabel": "Name",
+  "editProfileGenderLabel": "Gender",
+  "editProfileGenderMale": "Male",
+  "editProfileGenderFemale": "Female",
+  "editProfileGenderNotSpecified": "Not specified",
+  "editProfileSectionPhysical": "Physical parameters",
+  "editProfileAgeLabel": "Age",
+  "editProfileHeightLabel": "Height (cm)",
+  "editProfileWeightLabel": "Weight (kg)",
+  "editProfileSectionGoals": "Goals & Activity",
+  "editProfileActivityLabel": "Activity level",
+  "editProfileActivityLow": "Low (sedentary)",
+  "editProfileActivityModerate": "Moderate (1-3 workouts)",
+  "editProfileActivityHigh": "High (3+ workouts)",
+  "editProfileGoalsLabel": "Goals",
+  "editProfileSectionInjuries": "Injuries & limitations",
+  "editProfileAddInjuryLabel": "Add injury/limitation",
+  "editProfileAddInjuryHint": "E.g.: knee pain",
+  "editProfileAddButton": "Add",
+  "editProfileCancel": "Cancel",
+  "editProfileSave": "Save",
+  "editProfileValidateName": "Enter your name",
+  "editProfileValidateNameLength": "Name must be at most {max} characters",
+  "@editProfileValidateNameLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateAge": "Enter a valid age",
+  "editProfileValidateAgeRange": "Age {min}-{max}",
+  "@editProfileValidateAgeRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateHeight": "Enter a valid height",
+  "editProfileValidateHeightRange": "Height {min}-{max} cm",
+  "@editProfileValidateHeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateWeight": "Enter a valid weight",
+  "editProfileValidateWeightRange": "Weight {min}-{max} kg",
+  "@editProfileValidateWeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateGoalsLength": "Goal must be at most {max} characters",
+  "@editProfileValidateGoalsLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileInjuryTooLong": "Limitation must be at most {max} characters",
+  "@editProfileInjuryTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileMaxInjuries": "You can add up to {max} limitations",
+  "@editProfileMaxInjuries": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTitle": "Settings",
+  "settingsReminderTitle": "Workout reminders",
+  "settingsReminderSubtitle": "Set reminder time and days",
+  "settingsReminderEnable": "Enable reminders",
+  "settingsReminderActive": "Reminders enabled",
+  "settingsReminderInactive": "Reminders disabled",
+  "settingsReminderPermissionDenied": "Notification permission denied. Enable it in device settings.",
+  "settingsTimeTitle": "Reminder time",
+  "settingsDaysTitle": "Days of the week",
+  "settingsPresetWeekdays": "Weekdays",
+  "settingsPresetEveryday": "Every day",
+  "settingsPresetAlternate": "Alternate days",
+  "settingsDayMon": "Mon",
+  "settingsDaySun": "Sun",
+  "settingsDayTue": "Tue",
+  "settingsDayWed": "Wed",
+  "settingsDayThu": "Thu",
+  "settingsDayFri": "Fri",
+  "settingsDaySat": "Sat",
+  "workoutSelectionTitle": "Choose workout",
+  "workoutSelectionQuestion": "What workout would you like today?",
+  "workoutSelectionHint": "Choose a type and AI will create a personal program",
+  "workoutTypeLfk": "PT",
+  "workoutTypeStretching": "Stretching",
+  "workoutTypeStrength": "Strength",
+  "workoutTypeCardio": "Cardio",
+  "workoutDescLfk": "Physical therapy for recovery",
+  "workoutDescStretching": "Flexibility and stretching exercises",
+  "workoutDescStrength": "Strength exercises to build muscle",
+  "workoutDescCardio": "Cardio for endurance",
+  "workoutRetry": "Retry",
+  "workoutProfileNotLoaded": "Profile not loaded. Try again later.",
+  "workoutCheckinRequired": "Complete the health check-in first",
+  "workoutSavedWorkouts": "Saved workouts",
+  "workoutMinutesShort": "{minutes} min",
+  "@workoutMinutesShort": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSecondsUnitShort": "sec",
+  "workoutRepsUnitShort": "reps",
+  "workoutIntensityRest": "Rest",
+  "workoutIntensityLight": "Light",
+  "workoutIntensityModerate": "Moderate",
+  "workoutIntensityHigh": "High",
+  "workoutTimeAgoMinutes": "{count} min ago",
+  "@workoutTimeAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoHours": "{count} h ago",
+  "@workoutTimeAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoDays": "{count} d ago",
+  "@workoutTimeAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSessionTitle": "Unfinished workout",
+  "workoutSessionSubtitle": "You have a saved workout",
+  "workoutSessionSaved": "Saved: {time}",
+  "@workoutSessionSaved": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSessionContinue": "Continue workout",
+  "workoutSessionNew": "Start new",
+  "workoutGenerating": "Creating \"{label}\" workout",
+  "@workoutGenerating": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutGeneratingAnalyzingProfile": "Analyzing your profile and today’s status...",
+  "workoutGeneratingSelectingSafeExercises": "Selecting safe exercises...",
+  "workoutGeneratingAdaptingIntensity": "Adapting intensity to your condition...",
+  "workoutGeneratingCreatingProgram": "Building your personalized plan...",
+  "workoutGeneratingValidatingSafety": "Validating workout safety...",
+  "workoutCancel": "Cancel",
+  "workoutPreviewTitle": "Your workout",
+  "workoutPreviewNotFound": "Workout not found",
+  "workoutPreviewWarmup": "Warm-up",
+  "workoutPreviewMain": "Main exercises",
+  "workoutPreviewCooldown": "Cool-down",
+  "workoutPreviewExercises": "{count} ex.",
+  "@workoutPreviewExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPreviewStart": "Start workout",
+  "workoutPlanCreated": "Workout plan created",
+  "workoutPlayerTitle": "Workout",
+  "workoutPlayerReady": "Ready to go",
+  "workoutPlayerWarmup": "Warm-up",
+  "workoutPlayerMainPart": "Main part",
+  "workoutPlayerCooldown": "Cool-down",
+  "workoutPlayerStartWorkout": "Start workout",
+  "workoutPlayerSkipExercise": "Skip exercise",
+  "workoutPlayerFinishWorkout": "Finish workout",
+  "workoutPlayerPainButton": "Pain / Discomfort",
+  "workoutPlayerExerciseOf": "Exercise {current} / {total}",
+  "@workoutPlayerExerciseOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerMinutes": "MINUTES",
+  "workoutPlayerSeconds": "SECONDS",
+  "workoutPlayerReps": "REPS",
+  "workoutPlayerRest": "Rest",
+  "workoutPlayerRestSeconds": "{seconds} sec",
+  "@workoutPlayerRestSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerNextSet": "Next: {name}",
+  "@workoutPlayerNextSet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutPlayerAutoResume": "Exercise will resume automatically after the timer",
+  "workoutPlayerContinue": "Continue",
+  "workoutPlayerAiInsight": "AI INSIGHT",
+  "workoutPlayerAiNote": "AI doctor's note",
+  "workoutPlayerNoDescription": "No additional description.",
+  "workoutPlayerAiLocalizedPending": "Adapting AI insight to your language...",
+  "workoutPlayerAiLocalizedUnavailable": "Localized AI insight is temporarily unavailable.",
+  "workoutPlayerGotIt": "Got it",
+  "workoutPlayerClose": "Close",
+  "workoutPlayerExitTitle": "End workout?",
+  "workoutPlayerExitMessage": "Progress will not be saved",
+  "workoutPlayerExitCancel": "Cancel",
+  "workoutPlayerExitConfirm": "End",
+  "workoutPlayerSearchUnavailable": "Video search link unavailable",
+  "workoutPlayerAnimation": "Animation",
+  "painWhereTitle": "Where does it hurt?",
+  "painIntensityTitle": "How much does it hurt?",
+  "painActionTitle": "What do we do?",
+  "painSelectArea": "Select pain area",
+  "painCurrentExercise": "Current exercise: {name}",
+  "@painCurrentExercise": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "painCancelContinue": "Cancel, continue exercise",
+  "painAreaText": "Area: {area}",
+  "@painAreaText": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "painRateIntensity": "Rate pain intensity",
+  "painLevelText": "Pain level: {level}/10",
+  "@painLevelText": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "painLocationLowerBack": "Lower back",
+  "painLocationUpperBack": "Upper back",
+  "painLocationNeck": "Neck",
+  "painLocationKnees": "Knees",
+  "painLocationShoulders": "Shoulders",
+  "painLocationWrists": "Wrists",
+  "painLocationAnkle": "Ankle",
+  "painLocationHips": "Hips",
+  "painIntensity1": "Mild discomfort",
+  "painIntensity1Sub": "Barely noticeable",
+  "painIntensity2": "Slight pain",
+  "painIntensity2Sub": "Bearable",
+  "painIntensity3": "Minor pain",
+  "painIntensity3Sub": "Noticeable but manageable",
+  "painIntensity4": "Moderate pain",
+  "painIntensity4Sub": "Distracting",
+  "painIntensity5": "Medium pain",
+  "painIntensity5Sub": "Need to adjust technique",
+  "painIntensity6": "Noticeable pain",
+  "painIntensity6Sub": "Difficult to continue",
+  "painIntensity7": "Strong pain",
+  "painIntensity7Sub": "Need a break",
+  "painIntensity8": "Very strong pain",
+  "painIntensity8Sub": "Should stop",
+  "painIntensity9": "Sharp pain",
+  "painIntensity9Sub": "Need rest",
+  "painIntensity10": "Unbearable",
+  "painIntensity10Sub": "Need medical help",
+  "painActionLightTitle": "What would you like to do?",
+  "painActionLightSubtitle": "Mild discomfort - you can continue",
+  "painActionModerateTitle": "Caution recommended",
+  "painActionModerateSubtitle": "We recommend replacing the exercise or resting",
+  "painActionSevereTitle": "Rest needed",
+  "painActionSevereSubtitle": "If it hurts a lot, it's better to stop or rest",
+  "painActionDefault": "Choose an action",
+  "painContinueExercise": "Continue exercise",
+  "painContinueSub": "Pain is bearable, continuing",
+  "painReplaceExercise": "Replace exercise",
+  "painReplaceSub": "AI will find a safe alternative",
+  "painReplaceModSub": "Recommended for moderate pain",
+  "painBreak2min": "2-minute break",
+  "painBreak2minSub": "Short rest",
+  "painBreak5min": "5-minute break",
+  "painBreak5minSub": "Rest and listen to your body",
+  "painBreak10min": "10-minute break",
+  "painBreak10minSub": "Extended rest with tips",
+  "painEndWorkout": "End workout",
+  "painEndWorkoutSaveSub": "We'll save your progress",
+  "painEndWorkoutHealthSub": "Health comes first - rest today",
+  "painSevereWarning": "If pain is severe, we recommend seeing a doctor",
+  "painRestTitle": "Break",
+  "painRestRemaining": "remaining",
+  "painRestTips": "Rest tips:",
+  "painRestContinueEarly": "Continue early",
+  "painRestTipLight": "Take a deep breath in and out.\nRelax tense muscles.",
+  "painRestTipModerate": "Gently massage the pain area.\nDrink water and breathe calmly.",
+  "painRestTipSevere": "Relax completely.\nIf pain doesn't subside, see a doctor.",
+  "painReplacingTitle": "Finding replacement",
+  "painReplacingText": "AI is searching for a safe replacement",
+  "painReplacingArea": "Pain area: {area}",
+  "@painReplacingArea": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "completionTitle": "Great job!",
+  "completionMinutes": "{minutes} min",
+  "@completionMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "completionExercises": "{count} ex.",
+  "@completionExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionPainReports": "Pain reports: {count}",
+  "@completionPainReports": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionAnalyzing": "AI is analyzing your workout...",
+  "completionTips": "Tips ({count})",
+  "@completionTips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionShowAll": "Show all",
+  "completionCollapse": "Collapse",
+  "completionRecoveryPlan": "Recovery plan",
+  "completionRecoveryBrief": "Brief, without overload",
+  "completionRecoveryExpand": "Expand to see the steps",
+  "completionRestDuration": "Rest: {duration}",
+  "@completionRestDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "completionHideSteps": "Hide steps",
+  "completionMoreSteps": "More steps ({count})",
+  "@completionMoreSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionNutrition": "Nutrition",
+  "completionSleep": "Sleep",
+  "completionGoHome": "Go home",
+  "categoryBack": "Back",
+  "categoryLegs": "Legs",
+  "categoryArms": "Arms",
+  "categoryCore": "Core",
+  "categoryNeck": "Neck",
+  "categoryGeneral": "General",
+  "routeNotFound": "Page not found",
+  "checkinSummaryLight": "Light workout is recommended today.",
+  "homeOffline": "No internet connection.\\nTry again after reconnecting.",
+  "onboardingDefaultName": "User",
+  "homeUser": "User",
+  "profileRestrictions": "Restrictions",
+  "settingsConfigureReminders": "Set reminder time and days",
+  "navExitPrompt": "Press \"Back\" again to exit",
+  "energyVeryHigh": "Very high",
+  "checkinNoPain": "No pain",
+  "homeLoadingData": "Loading data...",
+  "authHintPasswordMin": "Minimum 6 characters",
+  "settingsWorkoutReminders": "Workout reminders",
+  "navProfile": "Profile",
+  "homeProgress": "Progress",
+  "checkinNotes": "Notes",
+  "homeMinutes": "Minutes",
+  "videoSearchAvailable": "Video available via YouTube search",
+  "checkinPainLevel": "Pain level",
+  "settingsDaysOfWeek": "Days of the week",
+  "energyVeryLow": "Very low",
+  "settingsRemindersOff": "Reminders are disabled",
+  "homeOfflineRetry": "Retry",
+  "checkinSummaryRest": "Rest and recovery are recommended today.",
+  "homeTotalMinutes": "Total minutes",
+  "checkinSymptomsTitle": "Symptoms",
+  "profileKg": "kg",
+  "settingsPermissionDenied": "Notification permission denied. Enable it in settings.",
+  "homeStartStreak": "Start your streak",
+  "profileCm": "cm",
+  "checkinNotesHint": "Any additional symptoms or comments",
+  "authHintPasswordRepeat": "Repeat your password",
+  "checkinStrongPain": "Strong pain",
+  "checkinWhereHurts": "Where does it hurt?",
+  "homeQuickActions": "Quick actions",
+  "homeStreakDays": "{count}-day streak",
+  "@homeStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "videoOpenSearch": "Open search in app",
+  "checkinToWorkout": "Go to workout",
+  "settingsRemindersActive": "Reminders are enabled",
+  "navWorkout": "Workout",
+  "checkinRedoSurvey": "Retake survey",
+  "homeGoodEvening": "Good evening",
+  "checkinSummaryGreat": "Great state. You can do a full workout.",
+  "checkinBetterRest": "Better to rest and recover today",
+  "energyLow": "Low",
+  "checkinSleep": "Sleep",
+  "checkinSleepQuality": "Sleep quality",
+  "videoNetwork": "Video",
+  "homeLoadingAnalytics": "Loading analytics...",
+  "checkinAlreadyCompleted": "Today's check-in is already completed",
+  "profileYears": "years",
+  "navHome": "Home",
+  "homeTapForDetailedStats": "Tap to view detailed stats",
+  "checkinRecommendation": "Recommendation",
+  "settingsEveryDay": "Every day",
+  "homeAverage": "Average",
+  "checkinMood": "Mood",
+  "energyHigh": "High",
+  "settingsReminderTime": "Reminder time",
+  "checkinRecommendedIntensity": "Recommended intensity: {intensity}",
+  "@checkinRecommendedIntensity": {
+    "placeholders": {
+      "intensity": {
+        "type": "String"
+      }
+    }
+  },
+  "profileHealthGoals": "Health & Goals",
+  "homeGoodAfternoon": "Good afternoon",
+  "settingsEnableReminders": "Enable reminders",
+  "homeStatistics": "Statistics",
+  "checkinSleepBad": "Poor",
+  "videoYoutube": "YouTube video",
+  "homeThisWeek": "This week",
+  "homeReadyForWorkout": "Ready for today's workout?",
+  "homeGoodMorning": "Good morning",
+  "navHistory": "History",
+  "checkinTryAgain": "Try again",
+  "checkinEnergyLevel": "Energy level",
+  "checkinSymptomsDescription": "Select all symptoms you feel today",
+  "checkinMoodTitle": "Your mood",
+  "profileMyProfile": "My profile",
+  "checkinPainDescription": "Rate your current pain level",
+  "checkinSleepGreat": "Great",
+  "homeWorkouts": "Workouts",
+  "homeAiRecommendations": "AI recommendations",
+  "checkinMoodDescription": "How is your emotional state today?",
+  "checkinMoodHappy": "Excellent",
+  "checkinMoodEnergized": "Energized",
+  "checkinMoodNeutral": "Normal",
+  "checkinMoodTired": "Tired",
+  "checkinMoodStressed": "Stressed",
+  "checkinSymptomHeadache": "Headache",
+  "checkinSymptomBackPain": "Back pain",
+  "checkinSymptomMuscleStiffness": "Muscle stiffness",
+  "checkinSymptomFatigue": "Fatigue",
+  "checkinSymptomNausea": "Nausea",
+  "checkinSymptomDizziness": "Dizziness",
+  "checkinPainLocationOther": "Other",
+  "checkinSummaryModerate": "Moderate workout is recommended.",
+  "checkinEnergy": "Energy",
+  "settingsWeekdays": "Weekdays",
+  "profileSignOut": "Sign out",
+  "energyMedium": "Medium",
+  "settingsEveryOtherDay": "Every other day",
+  "profilePersonalData": "Personal data",
+  "homeProgressStart": "Start your progress today",
+  "videoUnsupported": "Video unavailable",
+  "checkinEnergyDescription": "How much energy do you have right now?",
+  "activityLevelModerate": "Moderate activity",
+  "authErrorEmailInvalid": "Invalid email format",
+  "authErrorEmailEmpty": "Enter email",
+  "injuryMeniscus": "Meniscus injury",
+  "injuryProtrusion": "Disc protrusion",
+  "injuryWrist": "Wrist injury",
+  "injuryKneeArthrosis": "Knee arthrosis",
+  "authErrorPasswordEmpty": "Enter password",
+  "authErrorPasswordShort": "Password must be at least 6 characters",
+  "injuryShoulder": "Shoulder joint issues",
+  "injuryScoliosis": "Scoliosis",
+  "injuryHernia": "Lumbar hernia (L4-L5, L5-S1)",
+  "injuryHipArthrosis": "Hip arthrosis",
+  "injuryNeckPain": "Neck pain",
+  "injuryOsteochondrosis": "Osteochondrosis",
+  "activityLevelSedentary": "Sedentary lifestyle",
+  "activityLevelHigh": "High activity",
+  "authErrorPasswordConfirm": "Confirm your password",
+  "activityLevelLight": "Light activity",
+  "settingsLanguage": "Language",
+  "settingsLanguageHint": "Choose app language",
+  "languageKk": "Kazakh",
+  "languageRu": "Russian",
+  "languageEn": "English",
+  "errorNoConnection": "No internet connection",
+  "errorTimeout": "Request timed out. Please try again later.",
+  "errorAIQuota": "AI quota exceeded. Please try again later.",
+  "errorAIUnavailable": "AI service temporarily unavailable. Please try again later.",
+  "errorAINotConfigured": "AI service not configured. Contact the administrator.",
+  "errorAIEmpty": "Empty response from AI. Please try again.",
+  "errorAIParse": "Error processing AI response. Please try again.",
+  "errorGenerateWorkout": "Failed to generate workout. Please try again later.",
+  "errorSaveCheckin": "Failed to save check-in. Please try again later.",
+  "errorLoadCheckin": "Failed to load check-in. Check your connection.",
+  "errorSaveProfile": "Failed to update profile. Please try again later.",
+  "errorLoadProfile": "Failed to load profile. Check your connection.",
+  "errorAuthStatus": "Failed to verify authentication status",
+  "errorAuthSignIn": "Failed to sign in. Please try again later.",
+  "errorAuthSignUp": "Failed to sign up. Please try again later.",
+  "errorGeneral": "An error occurred. Please try again.",
+  "errorPermissionDenied": "Insufficient permissions for this operation",
+  "errorTooManyRequests": "Too many attempts. Please try again later.",
+  "errorInvalidCredentials": "Invalid login or password",
+  "errorEmailInUse": "This email is already registered",
+  "errorWeakPassword": "Password must be at least 6 characters",
+  "errorNotAuthenticated": "User is not authenticated"
+}

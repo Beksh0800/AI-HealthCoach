@@ -30,6 +30,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   int _elapsedSeconds = 0;
   int _painReportsCount = 0;
   UserProfile? _currentProfile;
+  String _activeLanguageCode = 'kk';
 
   /// Counter for saving progress periodically (every 10 seconds)
   int _saveCounter = 0;
@@ -124,14 +125,16 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     required UserProfile profile,
     required DailyCheckIn checkIn,
     required String workoutType,
+    String languageCode = 'kk',
   }) async {
+    _activeLanguageCode = _normalizeLanguageCode(languageCode);
     _currentProfile = profile;
     _painReportsCount = 0;
 
     emit(
       WorkoutGenerating(
         workoutType: workoutType,
-        message: 'Анализируем профиль и состояние...',
+        step: WorkoutGenerationStep.analyzingProfile,
       ),
     );
 
@@ -139,7 +142,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       emit(
         WorkoutGenerating(
           workoutType: workoutType,
-          message: 'Подбираем безопасные упражнения из базы...',
+          step: WorkoutGenerationStep.selectingSafeExercises,
         ),
       );
 
@@ -175,7 +178,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           emit(
             WorkoutGenerating(
               workoutType: workoutType,
-              message: 'Адаптируем нагрузку: $reason',
+              step: WorkoutGenerationStep.adaptingIntensity,
             ),
           );
         }
@@ -188,7 +191,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       emit(
         WorkoutGenerating(
           workoutType: workoutType,
-          message: 'AI создаёт персональную программу...',
+          step: WorkoutGenerationStep.creatingProgram,
         ),
       );
 
@@ -207,6 +210,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         workoutType: workoutType,
         availableExercises: filteredExercises,
         targetIntensity: targetIntensity,
+        languageCode: _activeLanguageCode,
       );
 
       final workout = _applyMediaToWorkout(
@@ -225,7 +229,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       emit(
         WorkoutGenerating(
           workoutType: workoutType,
-          message: 'Проверяем безопасность упражнений...',
+          step: WorkoutGenerationStep.validatingSafety,
         ),
       );
 
@@ -241,11 +245,12 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       debugPrint('WorkoutCubit: Error in generateWorkout: $e');
       final mapped = ErrorMapper.toAppException(
         e,
-        fallbackMessage: 'Не удалось сгенерировать тренировку',
+        fallbackCode: 'GENERATE_WORKOUT_FAILED',
       );
       emit(
         WorkoutError(
-          mapped.message,
+          errorCode: mapped.code ?? 'GENERATE_WORKOUT_FAILED',
+          debugMessage: mapped.message,
           retryable: ErrorMapper.isRetryable(e),
           workoutType: workoutType,
         ),
@@ -346,6 +351,10 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         .trim();
   }
 
+  /// Returns the current elapsed time in seconds.
+  /// The UI timer widget reads this instead of state.
+  int getElapsedSeconds() => _elapsedSeconds;
+
   /// Start the workout
   void startWorkout() {
     final currentState = state;
@@ -356,7 +365,9 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     }
   }
 
-  /// Start the elapsed time timer
+  /// Start the elapsed time timer.
+  /// Emits only structural changes (for example, rest finished).
+  /// Elapsed time is tracked in [_elapsedSeconds] and exposed via [getElapsedSeconds].
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -365,28 +376,24 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       final current = state;
       if (current is WorkoutInProgress && !current.isPaused) {
         if (current.isResting) {
-          final currentRemaining = current.restRemainingSeconds ?? 0;
-          final nextRemaining = currentRemaining - 1;
-
-          if (nextRemaining <= 0) {
-            emit(
-              current.copyWith(
-                elapsedSeconds: _elapsedSeconds,
-                isResting: false,
-              ),
-            );
-          } else {
-            emit(
-              current.copyWith(
-                elapsedSeconds: _elapsedSeconds,
-                restRemainingSeconds: nextRemaining,
-              ),
-            );
+          final restStartedAt = current.restStartedAtEpochMs;
+          final restDuration = current.restDurationSeconds;
+          if (restStartedAt > 0 && restDuration > 0) {
+            final elapsedRestSeconds =
+                (DateTime.now().millisecondsSinceEpoch - restStartedAt) ~/ 1000;
+            if (elapsedRestSeconds >= restDuration) {
+              // Rest finished — structural change only (single emit)
+              emit(
+                current.copyWith(
+                  isResting: false,
+                  restStartedAtEpochMs: 0,
+                  restDurationSeconds: 0,
+                ),
+              );
+            }
           }
-        } else {
-          emit(current.copyWith(elapsedSeconds: _elapsedSeconds));
         }
-        // Save progress every 10 seconds
+        // No emit for elapsed-only: UI reads via getElapsedSeconds()
         if (_saveCounter >= 10) {
           _saveCounter = 0;
           _saveProgress(current);
@@ -420,7 +427,8 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         current.copyWith(
           currentSet: current.currentSet + 1,
           isResting: true,
-          restRemainingSeconds: restSeconds,
+          restStartedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+          restDurationSeconds: restSeconds,
         ),
       );
     } else {
@@ -433,7 +441,13 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   void finishRest() {
     final current = state;
     if (current is WorkoutInProgress && current.isResting) {
-      emit(current.copyWith(isResting: false, restRemainingSeconds: 0));
+      emit(
+        current.copyWith(
+          isResting: false,
+          restStartedAtEpochMs: 0,
+          restDurationSeconds: 0,
+        ),
+      );
     }
   }
 
@@ -457,7 +471,8 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           currentExerciseIndex: current.currentExerciseIndex + 1,
           currentSet: 1,
           isResting: false,
-          restRemainingSeconds: 0,
+          restStartedAtEpochMs: 0,
+          restDurationSeconds: 0,
         ),
       );
     }
@@ -472,7 +487,8 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           currentExerciseIndex: current.currentExerciseIndex - 1,
           currentSet: 1,
           isResting: false,
-          restRemainingSeconds: 0,
+          restStartedAtEpochMs: 0,
+          restDurationSeconds: 0,
         ),
       );
     }
@@ -523,7 +539,6 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         currentExerciseIndex: current.currentExerciseIndex,
         elapsedSeconds: current.elapsedSeconds,
         painLocation: painLocation,
-        message: 'Подбираем безопасную альтернативу...',
       ),
     );
 
@@ -541,6 +556,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         painLocation: painLocation,
         profile: _currentProfile!,
         availableExercises: exercises,
+        languageCode: _activeLanguageCode,
       );
 
       if (replacement != null) {
@@ -590,7 +606,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
       );
       _startTimer();
     } else if (current is WorkoutPainRest) {
-      _restTimer?.cancel();
+      _painRestCompletionTimer?.cancel();
       emit(
         WorkoutInProgress(
           workout: current.workout,
@@ -636,49 +652,47 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     }
   }
 
-  Timer? _restTimer;
+  Timer? _painRestCompletionTimer;
 
   /// Take a pain rest break
   void takePainRest(int durationSeconds) {
     final current = state;
     if (current is WorkoutPainReported) {
+      final restDuration = durationSeconds > 0 ? durationSeconds : 0;
+      final restStartedAtEpochMs = DateTime.now().millisecondsSinceEpoch;
       emit(
         WorkoutPainRest(
           workout: current.workout,
           currentExerciseIndex: current.currentExerciseIndex,
           elapsedSeconds: current.elapsedSeconds,
-          restDurationSeconds: durationSeconds,
-          remainingSeconds: durationSeconds,
+          restStartedAtEpochMs: restStartedAtEpochMs,
+          restDurationSeconds: restDuration,
           painLocation: current.painLocation ?? '',
           painIntensity: current.painIntensity ?? 5,
         ),
       );
-      _startRestTimer();
+      _schedulePainRestCompletion(restDuration);
     }
   }
 
-  void _startRestTimer() {
-    _restTimer?.cancel();
-    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final current = state;
-      if (current is WorkoutPainRest) {
-        if (current.remainingSeconds <= 1) {
-          _restTimer?.cancel();
-          finishPainRest();
-        } else {
-          emit(
-            current.copyWith(remainingSeconds: current.remainingSeconds - 1),
-          );
-        }
-      } else {
-        timer.cancel();
+  void _schedulePainRestCompletion(int durationSeconds) {
+    _painRestCompletionTimer?.cancel();
+
+    if (durationSeconds <= 0) {
+      finishPainRest();
+      return;
+    }
+
+    _painRestCompletionTimer = Timer(Duration(seconds: durationSeconds), () {
+      if (!isClosed && state is WorkoutPainRest) {
+        finishPainRest();
       }
     });
   }
 
   /// Finish pain rest and continue workout
   void finishPainRest() {
-    _restTimer?.cancel();
+    _painRestCompletionTimer?.cancel();
     final current = state;
     if (current is WorkoutPainRest) {
       emit(
@@ -704,7 +718,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
     }
 
     if (workout != null) {
-      _restTimer?.cancel();
+      _painRestCompletionTimer?.cancel();
       _timer?.cancel();
       _finishWorkout(workout);
     }
@@ -783,22 +797,28 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   /// Get explanation for why an exercise is safe
   Future<String> explainExercise(
     String exerciseName,
-    String exerciseDescription,
-  ) async {
+    String exerciseDescription, {
+    String? languageCode,
+  }) async {
     if (_currentProfile == null) {
-      return 'Профиль не загружен';
+      return '';
     }
 
+    final requestLanguageCode = _normalizeLanguageCode(
+      languageCode ?? _activeLanguageCode,
+    );
     return _geminiService.explainExerciseSafety(
       exerciseName: exerciseName,
       exerciseDescription: exerciseDescription,
       profile: _currentProfile!,
+      languageCode: requestLanguageCode,
     );
   }
 
   /// Cancel and reset workout
   void cancelWorkout() {
     _timer?.cancel();
+    _painRestCompletionTimer?.cancel();
     _persistenceService.clearWorkoutProgress();
     emit(const WorkoutInitial());
   }
@@ -810,6 +830,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
         'workout_id': workout.id,
         'user_uid': workout.userUid,
         'title': workout.title,
+        'language_code': _activeLanguageCode,
         'type': workout.type,
         'intensity': workout.intensity,
         'duration_seconds': durationSeconds,
@@ -849,6 +870,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
           workoutType: workout.type,
           painReports: _painReportsCount,
           profile: _currentProfile!,
+          languageCode: _activeLanguageCode,
         );
 
         // Update state if we are still on completion screen
@@ -877,6 +899,7 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   /// Reset to initial state
   void reset() {
     _timer?.cancel();
+    _painRestCompletionTimer?.cancel();
     _painReportsCount = 0;
     _persistenceService.clearWorkoutProgress();
     emit(const WorkoutInitial());
@@ -885,6 +908,14 @@ class WorkoutCubit extends Cubit<WorkoutState> {
   @override
   Future<void> close() {
     _timer?.cancel();
+    _painRestCompletionTimer?.cancel();
     return super.close();
+  }
+
+  String _normalizeLanguageCode(String languageCode) {
+    final normalized = languageCode.trim().toLowerCase();
+    if (normalized.startsWith('ru')) return 'ru';
+    if (normalized.startsWith('en')) return 'en';
+    return 'kk';
   }
 }

@@ -1,0 +1,752 @@
+{
+  "@@locale": "ru",
+  "appName": "AI Health Coach",
+  "splashSubtitle": "Ваш персональный тренер",
+  "onboardingErrorAuth": "Ошибка: пользователь не авторизован",
+  "onboardingErrorSave": "Не удалось сохранить профиль. Попробуйте позже.",
+  "onboardingRetry": "Повторить",
+  "onboardingBtnBack": "Назад",
+  "onboardingBtnNext": "Далее",
+  "onboardingBtnFinish": "Завершить",
+  "onboardingWelcomeTitle": "Добро пожаловать!",
+  "onboardingWelcomeText": "Давайте создадим ваш индивидуальный профиль здоровья, чтобы тренировки были безопасными и эффективными.",
+  "onboardingBasicTitle": "Расскажите о себе",
+  "onboardingNameField": "Ваше имя",
+  "onboardingGenderTitle": "Ваш пол",
+  "onboardingGenderMale": "Мужской",
+  "onboardingGenderFemale": "Женский",
+  "onboardingGenderNotSpecified": "Не указывать",
+  "onboardingAgeText": "Возраст: {age} лет",
+  "@onboardingAgeText": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardingWeightText": "Вес: {weight} кг",
+  "@onboardingWeightText": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingActivityLevelTitle": "Уровень активности",
+  "onboardingHealthTitle": "Проблемы со здоровьем",
+  "onboardingHealthText": "Выберите всё, что к вам относится. Это поможет избежать опасных упражнений.",
+  "onboardingHealthInfo": "Если проблем нет, просто нажмите «Далее»",
+  "onboardingGoalsTitle": "Ваши цели",
+  "onboardingGoalsText": "Что для вас сейчас важнее всего?",
+  "goalRelieveBackPain": "Избавиться от боли в спине",
+  "goalStrengthenCore": "Укрепить мышечный корсет",
+  "goalRecoverFromInjury": "Восстановиться после травмы",
+  "goalImproveFlexibility": "Улучшить гибкость",
+  "goalMaintainGeneralTone": "Поддержать общий тонус",
+  "loginTitle": "С возвращением!",
+  "loginSubtitle": "Войдите, чтобы продолжить тренировки",
+  "loginEmailLabel": "Электронная почта",
+  "loginPasswordLabel": "Пароль",
+  "loginForgotPassword": "Забыли пароль?",
+  "loginButton": "Войти",
+  "loginNoAccount": "У вас нет учетной записи?",
+  "loginRegisterLink": "Зарегистрироваться",
+  "loginResetSent": "Ссылка для сброса пароля отправлена",
+  "loginFillEmail": "Сначала введите email",
+  "registerTitle": "Регистрация",
+  "registerSubtitle": "Создайте аккаунт для работы с тренером",
+  "registerNameLabel": "Имя",
+  "registerEmailLabel": "Электронная почта",
+  "registerPasswordLabel": "Пароль",
+  "registerConfirmPasswordLabel": "Подтвердите пароль",
+  "registerButton": "Зарегистрироваться",
+  "registerHaveAccount": "У вас уже есть аккаунт?",
+  "registerLoginLink": "Войти",
+  "registerPasswordMismatch": "Пароли не совпадают",
+  "homeGreeting": "Привет, {name}! 👋",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeGreetingDefault": "Привет! 👋",
+  "homeSubtitle": "Как ты себя чувствуешь сегодня?",
+  "homeStartCheckin": "✅  Пройти ежедневный опрос",
+  "homeCheckinDone": "✅  Опрос пройден",
+  "homeSectionWorkouts": "Быстрая тренировка",
+  "homeWorkoutLfk": "ЛФК",
+  "homeWorkoutStretching": "Растяжка",
+  "homeWorkoutStrength": "Силовая",
+  "homeWorkoutCardio": "Кардио",
+  "homeCheckinNotice": "Перед тренировкой пройдите опрос",
+  "homeProfileNotLoaded": "Профиль не загружен. Попробуйте позже.",
+  "checkinTitle": "Как вы себя чувствуете?",
+  "checkinMoodLabel": "Настроение",
+  "checkinEnergyLabel": "Энергия",
+  "checkinPainLabel": "Уровень боли",
+  "checkinSleepLabel": "Качество сна",
+  "checkinStressLabel": "Стресс",
+  "checkinButton": "Продолжить",
+  "checkinMoodHints": "Ужасно;Плохо;Нормально;Хорошо;Отлично",
+  "checkinEnergyHints": "Очень низкая;Низкая;Нормальная;Высокая;Полон энергии",
+  "checkinPainHints": "Очень сильная;Сильная;Умеренная;Слабая;Нет",
+  "checkinSleepHints": "Очень плохой;Плохой;Нормальный;Хороший;Отличный",
+  "checkinStressHints": "Очень высокий;Высокий;Умеренный;Низкий;Нет",
+  "historyTitle": "История",
+  "historyTabStats": "Статистика",
+  "historyTabWorkouts": "Тренировки",
+  "historyWeekChart": "Тренировки за неделю",
+  "historyWorkoutsCount": "Тренировки",
+  "historyTotalMinutes": "Всего минут",
+  "historyByType": "По типам",
+  "historyEmpty": "История пуста",
+  "historyLoading": "Загружаем историю...",
+  "historyOffline": "Нет подключения к интернету.\nПовторите после подключения к интернету.",
+  "historyOfflineRetry": "Повторить",
+  "historyLoadError": "Не удалось загрузить историю",
+  "historyRecentWorkouts": "Последние тренировки",
+  "historyTabWeek": "Неделя",
+  "historyTabMonth": "Месяц",
+  "historyWorkoutsLabel": "Тренировок",
+  "historyMinutesLabel": "Минут",
+  "historyTypesTitle": "Типы тренировок",
+  "historyMinShort": "мин",
+  "historyTypeLfk": "ЛФК",
+  "historyTypeStretching": "Растяжка",
+  "historyTypeStrength": "Силовая",
+  "historyTypeCardio": "Кардио",
+  "profileTitle": "Профиль",
+  "profileSettingsTooltip": "Настройки",
+  "profileSectionPersonal": "Личные данные",
+  "profileAge": "Возраст",
+  "profileAgeValue": "{age} лет",
+  "@profileAgeValue": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "profileHeight": "Рост",
+  "profileHeightValue": "{height} см",
+  "@profileHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "profileWeight": "Вес",
+  "profileWeightValue": "{weight} кг",
+  "@profileWeightValue": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "profileGender": "Пол",
+  "profileSectionHealth": "Здоровье и Цели",
+  "profileActivity": "Активность",
+  "profileGoal": "Цель",
+  "profileLimitations": "Ограничения",
+  "profileLogout": "Выйти из аккаунта",
+  "profileLoadError": "Не удалось загрузить профиль",
+  "profileNotFound": "Профиль не найден",
+  "profileNotFoundMessage": "Пройдите анкету или обновите экран.",
+  "profileLoading": "Загрузка профиля...",
+  "profileOffline": "Нет подключения к интернету.\nПопробуйте после подключения к сети.",
+  "profileRetry": "Повторить",
+  "profileGenderMale": "Мужской",
+  "profileGenderFemale": "Женский",
+  "profileGenderNotSpecified": "Не указан",
+  "profileActivityLow": "Низкая",
+  "profileActivityModerate": "Умеренная",
+  "profileActivityHigh": "Высокая",
+  "editProfileTitle": "Редактировать профиль",
+  "editProfileSectionBasic": "Основное",
+  "editProfileNameLabel": "Имя",
+  "editProfileGenderLabel": "Пол",
+  "editProfileGenderMale": "Мужской",
+  "editProfileGenderFemale": "Женский",
+  "editProfileGenderNotSpecified": "Не указан",
+  "editProfileSectionPhysical": "Физические показатели",
+  "editProfileAgeLabel": "Возраст",
+  "editProfileHeightLabel": "Рост (см)",
+  "editProfileWeightLabel": "Вес (кг)",
+  "editProfileSectionGoals": "Цели и Активность",
+  "editProfileActivityLabel": "Уровень активности",
+  "editProfileActivityLow": "Низкая (сидячий)",
+  "editProfileActivityModerate": "Умеренная (1-3 тренировки)",
+  "editProfileActivityHigh": "Высокая (3+ тренировки)",
+  "editProfileGoalsLabel": "Цели",
+  "editProfileSectionInjuries": "Травмы и ограничения",
+  "editProfileAddInjuryLabel": "Добавить травму/ограничение",
+  "editProfileAddInjuryHint": "Например: боль в колене",
+  "editProfileAddButton": "Добавить",
+  "editProfileCancel": "Отмена",
+  "editProfileSave": "Сохранить",
+  "editProfileValidateName": "Введите ваше имя",
+  "editProfileValidateNameLength": "Имя не более {max} символов",
+  "@editProfileValidateNameLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateAge": "Введите корректный возраст",
+  "editProfileValidateAgeRange": "Возраст {min}-{max}",
+  "@editProfileValidateAgeRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateHeight": "Введите корректный рост",
+  "editProfileValidateHeightRange": "Рост {min}-{max} см",
+  "@editProfileValidateHeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateWeight": "Введите корректный вес",
+  "editProfileValidateWeightRange": "Вес {min}-{max} кг",
+  "@editProfileValidateWeightRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileValidateGoalsLength": "Цель не более {max} символов",
+  "@editProfileValidateGoalsLength": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileInjuryTooLong": "Ограничение не более {max} символов",
+  "@editProfileInjuryTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileMaxInjuries": "Можно добавить до {max} ограничений",
+  "@editProfileMaxInjuries": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTitle": "Настройки",
+  "settingsReminderTitle": "Напоминания о тренировках",
+  "settingsReminderSubtitle": "Настройте время и дни напоминаний",
+  "settingsReminderEnable": "Включить напоминания",
+  "settingsReminderActive": "Напоминания включены",
+  "settingsReminderInactive": "Напоминания отключены",
+  "settingsReminderPermissionDenied": "Разрешение на уведомления не предоставлено. Включите в настройках устройства.",
+  "settingsTimeTitle": "Время напоминания",
+  "settingsDaysTitle": "Дни недели",
+  "settingsPresetWeekdays": "Будни",
+  "settingsPresetEveryday": "Каждый день",
+  "settingsPresetAlternate": "Через день",
+  "settingsDayMon": "Пн",
+  "settingsDaySun": "Вс",
+  "settingsDayTue": "Вт",
+  "settingsDayWed": "Ср",
+  "settingsDayThu": "Чт",
+  "settingsDayFri": "Пт",
+  "settingsDaySat": "Сб",
+  "workoutSelectionTitle": "Выбор тренировки",
+  "workoutSelectionQuestion": "Какую тренировку вы бы хотели сегодня?",
+  "workoutSelectionHint": "Выберите тип, AI создаст персональную программу",
+  "workoutTypeLfk": "ЛФК",
+  "workoutTypeStretching": "Растяжка",
+  "workoutTypeStrength": "Силовая",
+  "workoutTypeCardio": "Кардио",
+  "workoutDescLfk": "Лечебная физкультура для восстановления",
+  "workoutDescStretching": "Упражнения на гибкость и растяжку",
+  "workoutDescStrength": "Силовые упражнения для укрепления мышц",
+  "workoutDescCardio": "Кардио для выносливости",
+  "workoutRetry": "Повторить",
+  "workoutProfileNotLoaded": "Профиль не загружен. Попробуйте позже.",
+  "workoutCheckinRequired": "Сначала пройдите опрос о здоровье",
+  "workoutSavedWorkouts": "Сохранённые тренировки",
+  "workoutMinutesShort": "{minutes} мин",
+  "@workoutMinutesShort": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSecondsUnitShort": "сек",
+  "workoutRepsUnitShort": "повт",
+  "workoutIntensityRest": "Отдых",
+  "workoutIntensityLight": "Лёгкая",
+  "workoutIntensityModerate": "Умеренная",
+  "workoutIntensityHigh": "Высокая",
+  "workoutTimeAgoMinutes": "{count} мин назад",
+  "@workoutTimeAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoHours": "{count} ч назад",
+  "@workoutTimeAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutTimeAgoDays": "{count} дн назад",
+  "@workoutTimeAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutSessionTitle": "Незавершённая тренировка",
+  "workoutSessionSubtitle": "У вас есть сохранённая тренировка",
+  "workoutSessionSaved": "Сохранено: {time}",
+  "@workoutSessionSaved": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutSessionContinue": "Продолжить тренировку",
+  "workoutSessionNew": "Начать новую",
+  "workoutGenerating": "Создаём тренировку \"{label}\"",
+  "@workoutGenerating": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutGeneratingAnalyzingProfile": "Анализируем ваш профиль и состояние...",
+  "workoutGeneratingSelectingSafeExercises": "Подбираем безопасные упражнения...",
+  "workoutGeneratingAdaptingIntensity": "Адаптируем интенсивность под самочувствие...",
+  "workoutGeneratingCreatingProgram": "Собираем персональную программу...",
+  "workoutGeneratingValidatingSafety": "Проверяем безопасность плана...",
+  "workoutCancel": "Отмена",
+  "workoutPreviewTitle": "Ваша тренировка",
+  "workoutPreviewNotFound": "Тренировка не найдена",
+  "workoutPreviewWarmup": "Разминка",
+  "workoutPreviewMain": "Основные упражнения",
+  "workoutPreviewCooldown": "Заминка",
+  "workoutPreviewExercises": "{count} упр.",
+  "@workoutPreviewExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPreviewStart": "Начать тренировку",
+  "workoutPlanCreated": "План тренировок создан",
+  "onboardingDefaultName": "Пользователь",
+  "activityLevelSedentary": "Сидячий образ жизни",
+  "activityLevelLight": "Легкая активность",
+  "activityLevelModerate": "Умеренная активность",
+  "activityLevelHigh": "Высокая активность",
+  "injuryHernia": "Грыжа поясничного отдела (L4-L5, L5-S1)",
+  "injuryProtrusion": "Протрузия межпозвонковых дисков",
+  "injuryScoliosis": "Сколиоз",
+  "injuryOsteochondrosis": "Остеохондроз",
+  "injuryMeniscus": "Травма мениска",
+  "injuryKneeArthrosis": "Артроз коленного сустава",
+  "injuryHipArthrosis": "Артроз тазобедренного сустава",
+  "injuryShoulder": "Проблемы с плечевым суставом",
+  "injuryWrist": "Травма запястья",
+  "injuryNeckPain": "Боли в шейном отделе",
+  "authErrorEmailEmpty": "Введите email",
+  "authErrorEmailInvalid": "Неверный формат email",
+  "authErrorPasswordEmpty": "Введите пароль",
+  "authErrorPasswordShort": "Пароль должен быть не менее 6 символов",
+  "authHintPasswordMin": "Минимум 6 символов",
+  "authHintPasswordRepeat": "Повторите пароль",
+  "authErrorPasswordConfirm": "Подтвердите пароль",
+  "workoutPlayerTitle": "Тренировка",
+  "workoutPlayerReady": "Готово к старту",
+  "workoutPlayerWarmup": "Разминка",
+  "workoutPlayerMainPart": "Основная часть",
+  "workoutPlayerCooldown": "Заминка",
+  "workoutPlayerStartWorkout": "Начать тренировку",
+  "workoutPlayerSkipExercise": "Пропустить упражнение",
+  "workoutPlayerFinishWorkout": "Завершить тренировку",
+  "workoutPlayerPainButton": "Боль / Дискомфорт",
+  "workoutPlayerExerciseOf": "Упражнение {current} / {total}",
+  "@workoutPlayerExerciseOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerMinutes": "МИНУТЫ",
+  "workoutPlayerSeconds": "СЕКУНДЫ",
+  "workoutPlayerReps": "ПОВТОРЕНИЯ",
+  "workoutPlayerRest": "Отдых",
+  "workoutPlayerRestSeconds": "{seconds} сек",
+  "@workoutPlayerRestSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "workoutPlayerNextSet": "Далее: {name}",
+  "@workoutPlayerNextSet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "workoutPlayerAutoResume": "Упражнение продолжится автоматически после таймера",
+  "workoutPlayerContinue": "Продолжить",
+  "workoutPlayerAiInsight": "ИИ-ИНСАЙТ",
+  "workoutPlayerAiNote": "Заметка AI-доктора",
+  "workoutPlayerNoDescription": "Дополнительное описание отсутствует.",
+  "workoutPlayerAiLocalizedPending": "Адаптируем AI-пояснение под текущий язык...",
+  "workoutPlayerAiLocalizedUnavailable": "Локализованное AI-пояснение временно недоступно.",
+  "workoutPlayerGotIt": "Понятно",
+  "workoutPlayerClose": "Закрыть",
+  "workoutPlayerExitTitle": "Завершить тренировку?",
+  "workoutPlayerExitMessage": "Прогресс не будет сохранён",
+  "workoutPlayerExitCancel": "Отмена",
+  "workoutPlayerExitConfirm": "Завершить",
+  "workoutPlayerSearchUnavailable": "Ссылка для поиска видео недоступна",
+  "workoutPlayerAnimation": "Анимация",
+  "painWhereTitle": "Где болит?",
+  "painIntensityTitle": "Насколько это больно?",
+  "painActionTitle": "Что нам делать?",
+  "painSelectArea": "Выберите зону боли",
+  "painCurrentExercise": "Текущее упражнение: {name}",
+  "@painCurrentExercise": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "painCancelContinue": "Отменить, продолжить упражнение",
+  "painAreaText": "Зона: {area}",
+  "@painAreaText": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "painRateIntensity": "Оцените интенсивность боли",
+  "painLevelText": "Уровень боли: {level}/10",
+  "@painLevelText": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "painLocationLowerBack": "Поясница",
+  "painLocationUpperBack": "Спина (верхняя)",
+  "painLocationNeck": "Шея",
+  "painLocationKnees": "Колени",
+  "painLocationShoulders": "Плечи",
+  "painLocationWrists": "Запястья",
+  "painLocationAnkle": "Голеностоп",
+  "painLocationHips": "Бёдра/тазобедренный",
+  "painIntensity1": "Лёгкий дискомфорт",
+  "painIntensity1Sub": "Почти не мешает",
+  "painIntensity2": "Слабая боль",
+  "painIntensity2Sub": "Терпимо",
+  "painIntensity3": "Небольшая боль",
+  "painIntensity3Sub": "Заметно, но можно продолжить",
+  "painIntensity4": "Умеренная боль",
+  "painIntensity4Sub": "Отвлекает внимание",
+  "painIntensity5": "Средняя боль",
+  "painIntensity5Sub": "Нужно изменить технику",
+  "painIntensity6": "Ощутимая боль",
+  "painIntensity6Sub": "Трудно продолжать",
+  "painIntensity7": "Сильная боль",
+  "painIntensity7Sub": "Нужен перерыв",
+  "painIntensity8": "Очень сильная боль",
+  "painIntensity8Sub": "Лучше остановиться",
+  "painIntensity9": "Резкая боль",
+  "painIntensity9Sub": "Необходим отдых",
+  "painIntensity10": "Невыносимо",
+  "painIntensity10Sub": "Нужна помощь врача",
+  "painActionLightTitle": "Что бы вы хотели сделать?",
+  "painActionLightSubtitle": "Лёгкий дискомфорт — можно продолжить",
+  "painActionModerateTitle": "Рекомендуем осторожность",
+  "painActionModerateSubtitle": "Рекомендуем заменить упражнение или отдохнуть",
+  "painActionSevereTitle": "⚠️ Нужен отдых",
+  "painActionSevereSubtitle": "При сильной боли лучше остановиться или отдохнуть",
+  "painActionDefault": "Выберите действие",
+  "painContinueExercise": "Продолжить упражнение",
+  "painContinueSub": "Боль терпимая, продолжаю",
+  "painReplaceExercise": "Заменить упражнение",
+  "painReplaceSub": "AI подберёт безопасную альтернативу",
+  "painReplaceModSub": "Рекомендуется при умеренной боли",
+  "painBreak2min": "Перерыв 2 минуты",
+  "painBreak2minSub": "Короткий отдых",
+  "painBreak5min": "Перерыв 5 минут",
+  "painBreak5minSub": "Отдохните и прислушайтесь к телу",
+  "painBreak10min": "Перерыв 10 минут",
+  "painBreak10minSub": "Длительный отдых с советами",
+  "painEndWorkout": "Завершить тренировку",
+  "painEndWorkoutSaveSub": "Сохраним прогресс",
+  "painEndWorkoutHealthSub": "Здоровье важнее — отдохните сегодня",
+  "painSevereWarning": "При сильной боли рекомендуем обратиться к врачу",
+  "painRestTitle": "Перерыв",
+  "painRestRemaining": "осталось",
+  "painRestTips": "Советы для отдыха:",
+  "painRestContinueEarly": "Продолжить раньше",
+  "painRestTipLight": "Глубоко вдохните и выдохните.\nРасслабьте напряжённые мышцы.",
+  "painRestTipModerate": "Плавно помассируйте зону боли.\nВыпейте воды и спокойно дышите.",
+  "painRestTipSevere": "Полностью расслабьтесь.\nЕсли боль не стихает, обратитесь к врачу.",
+  "painReplacingTitle": "Поиск замены",
+  "painReplacingText": "AI ищет безопасную замену",
+  "painReplacingArea": "Зона боли: {area}",
+  "@painReplacingArea": {
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "completionTitle": "Отличная работа!",
+  "completionMinutes": "{minutes} мин",
+  "@completionMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "completionExercises": "{count} упр.",
+  "@completionExercises": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionPainReports": "Жалоб на боль: {count}",
+  "@completionPainReports": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionAnalyzing": "AI анализирует вашу тренировку...",
+  "completionTips": "Советы ({count})",
+  "@completionTips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionShowAll": "Показать все",
+  "completionCollapse": "Свернуть",
+  "completionRecoveryPlan": "План восстановления",
+  "completionRecoveryBrief": "Кратко, без перегруза",
+  "completionRecoveryExpand": "Откройте, чтобы посмотреть шаги",
+  "completionRestDuration": "Отдых: {duration}",
+  "@completionRestDuration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "completionHideSteps": "Скрыть шаги",
+  "completionMoreSteps": "Ещё шаги ({count})",
+  "@completionMoreSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionNutrition": "Питание",
+  "completionSleep": "Сон",
+  "completionGoHome": "На главную",
+  "categoryBack": "Спина",
+  "categoryLegs": "Ноги",
+  "categoryArms": "Руки",
+  "categoryCore": "Кор",
+  "categoryNeck": "Шея",
+  "categoryGeneral": "Общее",
+  "homeOffline": "Нет подключения к интернету.\nПовторите после подключения к интернету.",
+  "homeOfflineRetry": "Повторить",
+  "videoYoutube": "видео на YouTube",
+  "videoNetwork": "Видео",
+  "videoSearchAvailable": "Видео доступно через поиск на YouTube",
+  "videoOpenSearch": "Открыть поиск в приложении",
+  "videoUnsupported": "Видео недоступно",
+  "navHome": "Главная",
+  "navWorkout": "Тренировка",
+  "navHistory": "История",
+  "navProfile": "Профиль",
+  "navExitPrompt": "Нажмите \"Назад\" еще раз для выхода",
+  "routeNotFound": "Страница не найдена",
+  "checkinSummaryLight": "Сегодня рекомендуется легкая тренировка.",
+  "homeUser": "Пользователь",
+  "profileRestrictions": "Ограничения",
+  "settingsConfigureReminders": "Установите время и дни напоминания",
+  "energyVeryHigh": "Очень высокий",
+  "checkinNoPain": "Нет боли",
+  "homeLoadingData": "Загрузка данных...",
+  "settingsWorkoutReminders": "Напоминания о тренировках",
+  "homeProgress": "Прогресс",
+  "checkinNotes": "Примечания",
+  "homeMinutes": "Минуты",
+  "checkinPainLevel": "Уровень боли",
+  "settingsDaysOfWeek": "Дни недели",
+  "energyVeryLow": "Очень низкий",
+  "settingsRemindersOff": "Напоминания отключены",
+  "checkinSummaryRest": "Сегодня рекомендуется отдых и восстановление.",
+  "homeTotalMinutes": "Всего минут",
+  "checkinSymptomsTitle": "Симптомы",
+  "profileKg": "кг",
+  "settingsPermissionDenied": "Разрешение на уведомление отклонено. Включите его в настройках.",
+  "homeStartStreak": "Начни свою серию",
+  "profileCm": "см",
+  "checkinNotesHint": "Любые дополнительные симптомы или комментарии",
+  "checkinStrongPain": "Сильная боль",
+  "checkinWhereHurts": "Где болит?",
+  "homeQuickActions": "Быстрые действия",
+  "homeStreakDays": "{count}-дневная серия",
+  "@homeStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkinToWorkout": "Перейти на тренировку",
+  "settingsRemindersActive": "Напоминания включены",
+  "checkinRedoSurvey": "Повторно пройти опрос",
+  "homeGoodEvening": "Добрый вечер",
+  "checkinSummaryGreat": "Отличное государство. Вы можете провести полноценную тренировку.",
+  "checkinBetterRest": "Лучше сегодня отдохнуть и восстановиться",
+  "energyLow": "Низкий",
+  "checkinSleep": "Спать",
+  "checkinSleepQuality": "Качество сна",
+  "homeLoadingAnalytics": "Загрузка аналитики...",
+  "checkinAlreadyCompleted": "Сегодняшняя регистрация уже завершена",
+  "profileYears": "годы",
+  "homeTapForDetailedStats": "Нажмите, чтобы просмотреть подробную статистику",
+  "checkinRecommendation": "Рекомендация",
+  "settingsEveryDay": "Каждый день",
+  "homeAverage": "Средний",
+  "checkinMood": "Настроение",
+  "energyHigh": "Высокий",
+  "settingsReminderTime": "Время напоминания",
+  "checkinRecommendedIntensity": "Рекомендуемая интенсивность: {intensity}",
+  "@checkinRecommendedIntensity": {
+    "placeholders": {
+      "intensity": {
+        "type": "String"
+      }
+    }
+  },
+  "profileHealthGoals": "Здоровье и цели",
+  "homeGoodAfternoon": "Добрый день",
+  "settingsEnableReminders": "Включить напоминания",
+  "homeStatistics": "Статистика",
+  "checkinSleepBad": "Плохо",
+  "homeThisWeek": "На этой неделе",
+  "homeReadyForWorkout": "Готовы к сегодняшней тренировке?",
+  "homeGoodMorning": "Доброе утро",
+  "checkinTryAgain": "Попробуйте еще раз",
+  "checkinEnergyLevel": "Уровень энергии",
+  "checkinSymptomsDescription": "Выберите все симптомы, которые вы чувствуете сегодня",
+  "checkinMoodTitle": "Ваше настроение",
+  "profileMyProfile": "Мой профиль",
+  "checkinPainDescription": "Оцените свой текущий уровень боли",
+  "checkinSleepGreat": "Большой",
+  "homeWorkouts": "Тренировки",
+  "homeAiRecommendations": "Рекомендации ИИ",
+  "checkinMoodDescription": "Как ваше эмоциональное состояние сегодня?",
+  "checkinMoodHappy": "Отлично",
+  "checkinMoodEnergized": "Энергичный",
+  "checkinMoodNeutral": "Нормально",
+  "checkinMoodTired": "Устал",
+  "checkinMoodStressed": "Стресс",
+  "checkinSymptomHeadache": "Головная боль",
+  "checkinSymptomBackPain": "Боль в спине",
+  "checkinSymptomMuscleStiffness": "Скованность в мышцах",
+  "checkinSymptomFatigue": "Усталость",
+  "checkinSymptomNausea": "Тошнота",
+  "checkinSymptomDizziness": "Головокружение",
+  "checkinPainLocationOther": "Другое",
+  "checkinSummaryModerate": "Рекомендуется умеренная тренировка.",
+  "checkinEnergy": "Энергия",
+  "settingsWeekdays": "Будни",
+  "profileSignOut": "выход",
+  "energyMedium": "Середина",
+  "settingsEveryOtherDay": "Через день",
+  "profilePersonalData": "Персональные данные",
+  "homeProgressStart": "Начните свой прогресс сегодня",
+  "checkinEnergyDescription": "Сколько у вас энергии сейчас?",
+  "settingsLanguage": "Язык",
+  "settingsLanguageHint": "Выберите язык приложения",
+  "languageKk": "Казахский",
+  "languageRu": "Русский",
+  "languageEn": "Английский",
+  "errorNoConnection": "Нет подключения к интернету",
+  "errorTimeout": "Превышено время ожидания. Попробуйте позже.",
+  "errorAIQuota": "Квота AI исчерпана. Попробуйте позже.",
+  "errorAIUnavailable": "AI-сервис временно недоступен. Попробуйте позже.",
+  "errorAINotConfigured": "AI-сервис не настроен. Обратитесь к администратору.",
+  "errorAIEmpty": "Пустой ответ от AI. Попробуйте снова.",
+  "errorAIParse": "Ошибка обработки ответа AI. Попробуйте снова.",
+  "errorGenerateWorkout": "Не удалось сгенерировать тренировку. Попробуйте позже.",
+  "errorSaveCheckin": "Не удалось сохранить опрос. Попробуйте позже.",
+  "errorLoadCheckin": "Не удалось загрузить опрос. Проверьте соединение.",
+  "errorSaveProfile": "Не удалось обновить профиль. Попробуйте позже.",
+  "errorLoadProfile": "Не удалось загрузить профиль. Проверьте соединение.",
+  "errorAuthStatus": "Не удалось проверить статус авторизации",
+  "errorAuthSignIn": "Не удалось выполнить вход. Попробуйте позже.",
+  "errorAuthSignUp": "Не удалось зарегистрироваться. Попробуйте позже.",
+  "errorGeneral": "Произошла ошибка. Попробуйте ещё раз.",
+  "errorPermissionDenied": "Недостаточно прав для выполнения операции",
+  "errorTooManyRequests": "Слишком много попыток. Попробуйте позже.",
+  "errorInvalidCredentials": "Неверный логин или пароль",
+  "errorEmailInUse": "Этот email уже зарегистрирован",
+  "errorWeakPassword": "Пароль должен содержать минимум 6 символов",
+  "errorNotAuthenticated": "Пользователь не авторизован"
+}

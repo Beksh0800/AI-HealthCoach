@@ -18,6 +18,7 @@ abstract class IAiService {
     required String workoutType,
     required List<Exercise> availableExercises,
     String? targetIntensity,
+    String languageCode = 'ru',
   });
 
   /// Replace a specific exercise with a safe alternative
@@ -26,6 +27,7 @@ abstract class IAiService {
     required String painLocation,
     required UserProfile profile,
     required List<Exercise> availableExercises,
+    String languageCode = 'ru',
   });
 
   /// Explain why an exercise is safe for the user (Encyclopedia feature)
@@ -33,10 +35,14 @@ abstract class IAiService {
     required String exerciseName,
     required String exerciseDescription,
     required UserProfile profile,
+    String languageCode = 'ru',
   });
 
   /// Generate a quick recommendation based on check-in
-  Future<String> getQuickRecommendation(DailyCheckIn checkIn);
+  Future<String> getQuickRecommendation(
+    DailyCheckIn checkIn, {
+    String languageCode = 'ru',
+  });
 
   /// Generate personalized post-workout feedback
   Future<PostWorkoutFeedback> generatePostWorkoutFeedback({
@@ -47,6 +53,7 @@ abstract class IAiService {
     required int painReports,
     required UserProfile profile,
     List<String>? painLocations,
+    String languageCode = 'ru',
   });
 
   /// Calculate pain-adapted intensity based on user's pain history

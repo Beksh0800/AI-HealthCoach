@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/injection_container.dart';
-import '../../../core/router/app_router.dart';
+import '../../../core/router/tab_branch_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/notification_service.dart';
+import '../../blocs/locale/locale_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../utils/ui_action_guard.dart';
 
 /// Settings page for configuring workout reminders.
 class SettingsPage extends StatefulWidget {
@@ -16,6 +20,8 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _notificationService = sl<NotificationService>();
+  final UiActionGuard<_SettingsModalType> _actionGuard =
+      UiActionGuard<_SettingsModalType>(debugLabel: 'SettingsPage');
 
   bool _reminderEnabled = false;
   TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
@@ -23,15 +29,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _loading = true;
 
-  static const _dayLabels = {
-    1: 'Пн',
-    2: 'Вт',
-    3: 'Ср',
-    4: 'Чт',
-    5: 'Пт',
-    6: 'Сб',
-    7: 'Вс',
-  };
+  String _getDayLabel(BuildContext context, int day) {
+    final l10n = AppLocalizations.of(context);
+    switch (day) {
+      case 1:
+        return l10n.settingsDayMon;
+      case 2:
+        return l10n.settingsDayTue;
+      case 3:
+        return l10n.settingsDayWed;
+      case 4:
+        return l10n.settingsDayThu;
+      case 5:
+        return l10n.settingsDayFri;
+      case 6:
+        return l10n.settingsDaySat;
+      case 7:
+        return l10n.settingsDaySun;
+      default:
+        return '';
+    }
+  }
 
   @override
   void initState() {
@@ -59,10 +77,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Настройки'),
+        title: Text(AppLocalizations.of(context).settingsTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.profile),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.goToTabBranch(AppTabBranch.profile);
+          },
         ),
       ),
       body: _loading
@@ -72,11 +96,91 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildLanguageSection(),
+                  const SizedBox(height: 24),
                   _buildReminderSection(),
                 ],
               ),
             ),
     );
+  }
+
+  Widget _buildLanguageSection() {
+    final currentCode = Localizations.localeOf(context).languageCode;
+    final l10n = AppLocalizations.of(context);
+    final currentLabel = switch (currentCode) {
+      'kk' => l10n.languageKk,
+      'ru' => l10n.languageRu,
+      _ => l10n.languageEn,
+    };
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        leading: const Icon(Icons.language, color: AppColors.primary),
+        title: Text(
+          l10n.settingsLanguage,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(l10n.settingsLanguageHint),
+        trailing: Text(
+          currentLabel,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        onTap: _showLanguagePicker,
+      ),
+    );
+  }
+
+  Future<void> _showLanguagePicker() async {
+    final l10n = AppLocalizations.of(context);
+    final currentCode = Localizations.localeOf(context).languageCode;
+
+    String? selected;
+    await _actionGuard.runModal(
+      'settings_language_picker',
+      modalType: _SettingsModalType.languagePicker,
+      idempotentWhenSameModalOpen: true,
+      action: () async {
+        selected = await showModalBottomSheet<String>(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.check),
+                  title: Text(l10n.languageKk),
+                  selected: currentCode == 'kk',
+                  onTap: () => Navigator.of(context).pop('kk'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.check),
+                  title: Text(l10n.languageRu),
+                  selected: currentCode == 'ru',
+                  onTap: () => Navigator.of(context).pop('ru'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.check),
+                  title: Text(l10n.languageEn),
+                  selected: currentCode == 'en',
+                  onTap: () => Navigator.of(context).pop('en'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null || !mounted) return;
+    await context.read<LocaleCubit>().changeLocale(selected!);
   }
 
   Widget _buildReminderSection() {
@@ -97,21 +201,31 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.notifications_active, color: AppColors.primary, size: 24),
+              child: const Icon(
+                Icons.notifications_active,
+                color: AppColors.primary,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Напоминания о тренировках',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    AppLocalizations.of(context).settingsWorkoutReminders,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Настройте время и дни для напоминаний',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    AppLocalizations.of(context).settingsConfigureReminders,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -122,11 +236,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
         // Enable toggle
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: SwitchListTile(
-            title: const Text('Включить напоминания', style: TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(
+              AppLocalizations.of(context).settingsEnableReminders,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             subtitle: Text(
-              _reminderEnabled ? 'Напоминания активны' : 'Напоминания отключены',
+              _reminderEnabled
+                  ? AppLocalizations.of(context).settingsRemindersActive
+                  : AppLocalizations.of(context).settingsRemindersOff,
               style: const TextStyle(fontSize: 13),
             ),
             value: _reminderEnabled,
@@ -137,9 +258,9 @@ class _SettingsPageState extends State<SettingsPage> {
               if (!success && mounted) {
                 setState(() => _reminderEnabled = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                      'Разрешение на уведомления не выдано. Включите его в настройках устройства.',
+                      AppLocalizations.of(context).settingsPermissionDenied,
                     ),
                   ),
                 );
@@ -158,12 +279,20 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // Time picker card
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: ListTile(
               leading: const Icon(Icons.access_time, color: AppColors.primary),
-              title: const Text('Время напоминания', style: TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(
+                AppLocalizations.of(context).settingsReminderTime,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -185,17 +314,29 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // Day selector card
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.calendar_today, color: AppColors.primary, size: 20),
-                      SizedBox(width: 12),
-                      Text('Дни недели', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                      const Icon(
+                        Icons.calendar_today,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        AppLocalizations.of(context).settingsDaysOfWeek,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -211,19 +352,25 @@ class _SettingsPageState extends State<SettingsPage> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: selected ? AppColors.primary : AppColors.background,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.background,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: selected ? AppColors.primary : AppColors.textHint.withValues(alpha: 0.3),
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textHint.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Center(
                             child: Text(
-                              _dayLabels[day]!,
+                              _getDayLabel(context, day),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: selected ? Colors.white : AppColors.textSecondary,
+                                color: selected
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
                               ),
                             ),
                           ),
@@ -241,11 +388,28 @@ class _SettingsPageState extends State<SettingsPage> {
           // Quick presets
           Row(
             children: [
-              _buildPresetChip('Будни', [1, 2, 3, 4, 5]),
+              _buildPresetChip(AppLocalizations.of(context).settingsWeekdays, [
+                1,
+                2,
+                3,
+                4,
+                5,
+              ]),
               const SizedBox(width: 8),
-              _buildPresetChip('Каждый день', [1, 2, 3, 4, 5, 6, 7]),
+              _buildPresetChip(AppLocalizations.of(context).settingsEveryDay, [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+              ]),
               const SizedBox(width: 8),
-              _buildPresetChip('Через день', [1, 3, 5, 7]),
+              _buildPresetChip(
+                AppLocalizations.of(context).settingsEveryOtherDay,
+                [1, 3, 5, 7],
+              ),
             ],
           ),
         ],
@@ -270,7 +434,9 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         backgroundColor: isActive ? AppColors.primary : AppColors.background,
         side: BorderSide(
-          color: isActive ? AppColors.primary : AppColors.textHint.withValues(alpha: 0.3),
+          color: isActive
+              ? AppColors.primary
+              : AppColors.textHint.withValues(alpha: 0.3),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 4),
       ),
@@ -288,19 +454,29 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _reminderTime,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
+    TimeOfDay? picked;
+    await _actionGuard.runModal(
+      'settings_time_picker',
+      modalType: _SettingsModalType.timePicker,
+      idempotentWhenSameModalOpen: true,
+      action: () async {
+        picked = await showTimePicker(
+          context: context,
+          initialTime: _reminderTime,
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            );
+          },
         );
       },
     );
     if (picked != null && mounted) {
-      setState(() => _reminderTime = picked);
-      await _notificationService.setTime(picked.hour, picked.minute);
+      setState(() => _reminderTime = picked!);
+      await _notificationService.setTime(picked!.hour, picked!.minute);
     }
   }
 
@@ -317,3 +493,5 @@ class _SettingsPageState extends State<SettingsPage> {
     await _notificationService.setDays(_selectedDays);
   }
 }
+
+enum _SettingsModalType { languagePicker, timePicker }

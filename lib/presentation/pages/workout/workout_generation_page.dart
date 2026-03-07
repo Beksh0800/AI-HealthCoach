@@ -1,13 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_localization_utils.dart';
+import '../../../core/utils/workout_localization_utils.dart';
 import '../../../data/models/workout_model.dart';
+import '../../../gen/app_localizations.dart';
 import '../../blocs/workout/workout_cubit.dart';
+import '../../blocs/workout/workout_flow_route_target.dart';
 import '../../blocs/profile/profile_cubit.dart';
 import '../../blocs/checkin/checkin_cubit.dart';
+import '../../utils/ui_action_guard.dart';
 
 /// Page for selecting workout type and generating AI workout
 class WorkoutGenerationPage extends StatelessWidget {
@@ -33,6 +40,79 @@ class _WorkoutGenerationContent extends StatefulWidget {
 }
 
 class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
+  final UiActionGuard<Never> _actionGuard = UiActionGuard<Never>(
+    debugLabel: 'WorkoutGenerationPage',
+  );
+  bool _isNavigatingFromListener = false;
+  bool _isRecoveringFromStateMismatch = false;
+
+  void _recoverFromStateMismatch(
+    BuildContext context,
+    WorkoutState state, {
+    required String source,
+  }) {
+    final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!isCurrentRoute) {
+      return;
+    }
+
+    if (_isRecoveringFromStateMismatch || _isNavigatingFromListener) {
+      return;
+    }
+
+    final target = state.routeTarget;
+    if (target == WorkoutFlowRouteTarget.generation) {
+      return;
+    }
+
+    _isRecoveringFromStateMismatch = true;
+    debugPrint(
+      'WorkoutGenerationPage: state mismatch recovery from $source, state=${state.runtimeType}, target=$target',
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      switch (target) {
+        case WorkoutFlowRouteTarget.preview:
+          context.go(AppRoutes.workoutPreview);
+          break;
+        case WorkoutFlowRouteTarget.player:
+          context.go(AppRoutes.workoutPlayer);
+          break;
+        case WorkoutFlowRouteTarget.generation:
+          break;
+      }
+
+      _isRecoveringFromStateMismatch = false;
+    });
+  }
+
+  String _localizedTypeLabel(BuildContext context, String type) {
+    return WorkoutLocalizationUtils.localizedWorkoutType(
+      AppLocalizations.of(context),
+      type,
+    );
+  }
+
+  String _localizedTypeDescription(BuildContext context, String type) {
+    final l = AppLocalizations.of(context);
+    switch (type) {
+      case WorkoutTypes.lfk:
+        return l.workoutDescLfk;
+      case WorkoutTypes.stretching:
+        return l.workoutDescStretching;
+      case WorkoutTypes.strength:
+        return l.workoutDescStrength;
+      case WorkoutTypes.cardio:
+        return l.workoutDescCardio;
+      default:
+        return '';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -44,34 +124,68 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     } else {
       // Check for saved session on page load ONLY if not starting a specific new one
       context.read<WorkoutCubit>().checkForActiveSession();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _recoverFromStateMismatch(
+          context,
+          context.read<WorkoutCubit>().state,
+          source: 'initial_state_check',
+        );
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Выбор тренировки'),
+        title: Text(l.workoutSelectionTitle),
 
         // Leading button removed for top-level tab
       ),
       body: BlocConsumer<WorkoutCubit, WorkoutState>(
         listener: (context, state) {
+          final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
+          if (!isCurrentRoute) {
+            return;
+          }
+
           if (state is WorkoutReady) {
-            context.go(AppRoutes.workoutPreview);
+            if (_isNavigatingFromListener) return;
+            _isNavigatingFromListener = true;
+            final future = context.push(AppRoutes.workoutPreview);
+            unawaited(
+              future.whenComplete(() {
+                _isNavigatingFromListener = false;
+              }),
+            );
           }
           if (state is WorkoutInProgress) {
             // Restored session → go to player
-            context.go(AppRoutes.workoutPlayer);
+            if (_isNavigatingFromListener) return;
+            _isNavigatingFromListener = true;
+            final future = context.push(AppRoutes.workoutPlayer);
+            unawaited(
+              future.whenComplete(() {
+                _isNavigatingFromListener = false;
+              }),
+            );
           }
           if (state is WorkoutError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(
+                  ErrorLocalizationUtils.localize(
+                    context,
+                    state.errorCode,
+                    fallbackMessage: state.debugMessage,
+                  ),
+                ),
                 backgroundColor: AppColors.error,
                 action: state.retryable && state.workoutType != null
                     ? SnackBarAction(
-                        label: 'Повторить',
+                        label: l.workoutRetry,
                         textColor: Colors.white,
                         onPressed: () {
                           _generateWorkout(context, state.workoutType!);
@@ -83,6 +197,11 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           }
         },
         builder: (context, state) {
+          if (state.routeTarget != WorkoutFlowRouteTarget.generation) {
+            _recoverFromStateMismatch(context, state, source: 'build');
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (state is WorkoutGenerating) {
             return _buildGeneratingView(context, state);
           }
@@ -100,8 +219,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     BuildContext context,
     WorkoutSessionRecovery state,
   ) {
-    final workoutLabel =
-        WorkoutTypes.labels[state.workout.type] ?? state.workout.type;
+    final l = AppLocalizations.of(context);
+    final workoutLabel = _localizedTypeLabel(context, state.workout.type);
     final exercisesDone = state.exerciseIndex;
     final totalExercises = state.workout.totalExercises;
     final minutes = state.elapsedSeconds ~/ 60;
@@ -125,9 +244,9 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                 children: [
                   const Icon(Icons.restore, size: 56, color: Colors.indigo),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Незавершённая тренировка',
-                    style: TextStyle(
+                  Text(
+                    l.workoutSessionTitle,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.indigo,
@@ -135,7 +254,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'У вас есть сохранённая тренировка',
+                    l.workoutSessionSubtitle,
                     style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 20),
@@ -150,7 +269,17 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                     child: Column(
                       children: [
                         Text(
-                          state.workout.title,
+                          WorkoutLocalizationUtils.localizedWorkoutTitle(
+                            l10n: l,
+                            localeCode: Localizations.localeOf(
+                              context,
+                            ).languageCode,
+                            type: state.workout.type,
+                            rawTitle: state.workout.title,
+                            sourceLanguageCode:
+                                state.workout.aiMetadata?['language_code']
+                                    as String?,
+                          ),
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -162,7 +291,10 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildInfoChip(Icons.fitness_center, workoutLabel),
-                            _buildInfoChip(Icons.timer, '$minutes мин'),
+                            _buildInfoChip(
+                              Icons.timer,
+                              l.workoutMinutesShort(minutes),
+                            ),
                             _buildInfoChip(
                               Icons.format_list_numbered,
                               '$exercisesDone/$totalExercises',
@@ -171,7 +303,12 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Сохранено: ${state.timeAgoText}',
+                          l.workoutSessionSaved(
+                            WorkoutLocalizationUtils.localizedTimeAgo(
+                              l,
+                              state.savedAt,
+                            ),
+                          ),
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade500,
@@ -192,9 +329,9 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                   context.read<WorkoutCubit>().restoreSession();
                 },
                 icon: const Icon(Icons.play_arrow),
-                label: const Text(
-                  'Продолжить тренировку',
-                  style: TextStyle(fontSize: 16),
+                label: Text(
+                  l.workoutSessionContinue,
+                  style: const TextStyle(fontSize: 16),
                 ),
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
@@ -216,7 +353,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Начать новую'),
+                child: Text(l.workoutSessionNew),
               ),
             ),
           ],
@@ -239,19 +376,20 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
   }
 
   Widget _buildWorkoutTypeSelection(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Какую тренировку хочешь сегодня?',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              l.workoutSelectionQuestion,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Выбери тип тренировки и AI создаст персональную программу',
+              l.workoutSelectionHint,
               style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 32),
@@ -303,6 +441,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
   }
 
   Widget _buildCachedWorkoutsSection(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return FutureBuilder<List<Workout>>(
       future: context.read<WorkoutCubit>().getCachedWorkouts(),
       builder: (context, snapshot) {
@@ -321,7 +460,7 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Сохранённые тренировки',
+                  l.workoutSavedWorkouts,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -339,7 +478,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
   }
 
   Widget _buildCachedWorkoutCard(BuildContext context, Workout workout) {
-    final typeLabel = WorkoutTypes.labels[workout.type] ?? workout.type;
+    final l = AppLocalizations.of(context);
+    final typeLabel = _localizedTypeLabel(context, workout.type);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -355,13 +495,19 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
           child: Icon(Icons.fitness_center, color: AppColors.primary, size: 20),
         ),
         title: Text(
-          workout.title,
+          WorkoutLocalizationUtils.localizedWorkoutTitle(
+            l10n: l,
+            localeCode: Localizations.localeOf(context).languageCode,
+            type: workout.type,
+            rawTitle: workout.title,
+            sourceLanguageCode: workout.aiMetadata?['language_code'] as String?,
+          ),
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          '$typeLabel • ${workout.estimatedDuration} мин',
+          '$typeLabel • ${l.workoutMinutesShort(workout.estimatedDuration)}',
           style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
         trailing: const Icon(Icons.play_circle_outline, size: 28),
@@ -378,8 +524,8 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     required IconData icon,
     required Color color,
   }) {
-    final label = WorkoutTypes.labels[type] ?? type;
-    final description = WorkoutTypes.descriptions[type] ?? '';
+    final label = _localizedTypeLabel(context, type);
+    final description = _localizedTypeDescription(context, type);
 
     return GestureDetector(
       onTap: () => _generateWorkout(context, type),
@@ -431,13 +577,22 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
   }
 
   void _generateWorkout(BuildContext context, String workoutType) {
+    unawaited(
+      _actionGuard.run('generate_workout_action', () async {
+        _generateWorkoutUnsafe(context, workoutType);
+      }),
+    );
+  }
+
+  void _generateWorkoutUnsafe(BuildContext context, String workoutType) {
+    final l = AppLocalizations.of(context);
     final profileState = context.read<ProfileCubit>().state;
     final checkInState = context.read<CheckInCubit>().state;
 
     if (profileState is! ProfileLoaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Профиль не загружен. Попробуйте позже.'),
+        SnackBar(
+          content: Text(l.workoutProfileNotLoaded),
           backgroundColor: AppColors.error,
         ),
       );
@@ -447,12 +602,12 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
     if (checkInState is! CheckInCompleted &&
         checkInState is! CheckInAlreadyCompleted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Сначала пройдите опрос самочувствия'),
+        SnackBar(
+          content: Text(l.workoutCheckinRequired),
           backgroundColor: AppColors.warning,
         ),
       );
-      context.go(AppRoutes.checkIn, extra: workoutType);
+      context.push(AppRoutes.checkIn, extra: workoutType);
       return;
     }
 
@@ -464,11 +619,13 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
       profile: profileState.profile,
       checkIn: checkIn,
       workoutType: workoutType,
+      languageCode: Localizations.localeOf(context).languageCode,
     );
   }
 
   Widget _buildGeneratingView(BuildContext context, WorkoutGenerating state) {
-    final label = WorkoutTypes.labels[state.workoutType] ?? '';
+    final l = AppLocalizations.of(context);
+    final label = _localizedTypeLabel(context, state.workoutType);
 
     return Center(
       child: Padding(
@@ -496,13 +653,13 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
             ),
             const SizedBox(height: 32),
             Text(
-              'Создаём тренировку "$label"',
+              l.workoutGenerating(label),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
-              state.message,
+              _localizedGeneratingMessage(context, state.step),
               style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -511,11 +668,30 @@ class _WorkoutGenerationContentState extends State<_WorkoutGenerationContent> {
               onPressed: () {
                 context.read<WorkoutCubit>().reset();
               },
-              child: const Text('Отмена'),
+              child: Text(l.workoutCancel),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _localizedGeneratingMessage(
+    BuildContext context,
+    WorkoutGenerationStep step,
+  ) {
+    final l = AppLocalizations.of(context);
+    switch (step) {
+      case WorkoutGenerationStep.analyzingProfile:
+        return l.workoutGeneratingAnalyzingProfile;
+      case WorkoutGenerationStep.selectingSafeExercises:
+        return l.workoutGeneratingSelectingSafeExercises;
+      case WorkoutGenerationStep.adaptingIntensity:
+        return l.workoutGeneratingAdaptingIntensity;
+      case WorkoutGenerationStep.creatingProgram:
+        return l.workoutGeneratingCreatingProgram;
+      case WorkoutGenerationStep.validatingSafety:
+        return l.workoutGeneratingValidatingSafety;
+    }
   }
 }

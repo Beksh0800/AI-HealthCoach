@@ -13,10 +13,17 @@ import 'package:ai_health_coach/data/models/workout_model.dart';
 
 // Mocks
 class MockGeminiService extends Mock implements GeminiService {}
+
 class MockExerciseRepository extends Mock implements ExerciseRepository {}
-class MockWorkoutPersistenceService extends Mock implements WorkoutPersistenceService {}
-class MockWorkoutAnalyticsService extends Mock implements WorkoutAnalyticsService {}
+
+class MockWorkoutPersistenceService extends Mock
+    implements WorkoutPersistenceService {}
+
+class MockWorkoutAnalyticsService extends Mock
+    implements WorkoutAnalyticsService {}
+
 class MockWorkoutCacheService extends Mock implements WorkoutCacheService {}
+
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 
 // Test data
@@ -54,16 +61,19 @@ void main() {
     mockPersistenceService = MockWorkoutPersistenceService();
     mockAnalyticsService = MockWorkoutAnalyticsService();
     mockFirestore = MockFirebaseFirestore();
-    
-    when(() => mockPersistenceService.clearWorkoutProgress())
-        .thenAnswer((_) async {});
-    when(() => mockPersistenceService.saveWorkoutProgress(
-          workoutId: any(named: 'workoutId'),
-          exerciseIndex: any(named: 'exerciseIndex'),
-          currentSet: any(named: 'currentSet'),
-          elapsedSeconds: any(named: 'elapsedSeconds'),
-        )).thenAnswer((_) async {});
-    
+
+    when(
+      () => mockPersistenceService.clearWorkoutProgress(),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockPersistenceService.saveWorkoutProgress(
+        workoutId: any(named: 'workoutId'),
+        exerciseIndex: any(named: 'exerciseIndex'),
+        currentSet: any(named: 'currentSet'),
+        elapsedSeconds: any(named: 'elapsedSeconds'),
+      ),
+    ).thenAnswer((_) async {});
+
     workoutCubit = WorkoutCubit(
       geminiService: mockGeminiService,
       exerciseRepository: mockExerciseRepository,
@@ -100,9 +110,12 @@ void main() {
       },
       expect: () => [
         // 1. Report Pain -> Location Step
-        isA<WorkoutPainReported>()
-            .having((s) => s.step, 'step', PainFlowStep.location),
-        
+        isA<WorkoutPainReported>().having(
+          (s) => s.step,
+          'step',
+          PainFlowStep.location,
+        ),
+
         // 2. Select Location -> Intensity Step
         isA<WorkoutPainReported>()
             .having((s) => s.step, 'step', PainFlowStep.intensity)
@@ -117,16 +130,61 @@ void main() {
         // 4. Take Rest -> Rest State
         isA<WorkoutPainRest>()
             .having((s) => s.restDurationSeconds, 'duration', 60)
-            .having((s) => s.remainingSeconds, 'remaining', 60),
+            .having((s) => s.restStartedAtEpochMs > 0, 'startedAt', true),
 
         // 5. Timer tick (optional, depending on implicit async logic, usually periodic timers need proper waiting)
         // We skip exact timer tick checks here as they are async, checking the final state transition
-        
+
         // 6. Finish Rest -> Back to InProgress
         isA<WorkoutInProgress>(),
       ],
       // We skip count verification because timer ticks might produce extra states
-      skip: 0, 
+      skip: 0,
+    );
+
+    blocTest<WorkoutCubit, WorkoutState>(
+      'Pain rest does not emit every second while countdown is running',
+      build: () => workoutCubit,
+      seed: () => WorkoutPainReported(
+        workout: testWorkout,
+        currentExerciseIndex: 0,
+        elapsedSeconds: 100,
+        step: PainFlowStep.action,
+        painLocation: 'Knees',
+        painIntensity: 6,
+      ),
+      act: (cubit) => cubit.takePainRest(3),
+      wait: const Duration(seconds: 2),
+      expect: () => [
+        isA<WorkoutPainRest>()
+            .having((s) => s.restDurationSeconds, 'duration', 3)
+            .having((s) => s.restStartedAtEpochMs > 0, 'startedAt', true),
+      ],
+    );
+
+    blocTest<WorkoutCubit, WorkoutState>(
+      'Pain rest auto-transitions to WorkoutInProgress after timer',
+      build: () => workoutCubit,
+      seed: () => WorkoutPainReported(
+        workout: testWorkout,
+        currentExerciseIndex: 0,
+        elapsedSeconds: 100,
+        step: PainFlowStep.action,
+        painLocation: 'Knees',
+        painIntensity: 6,
+      ),
+      act: (cubit) => cubit.takePainRest(1),
+      wait: const Duration(milliseconds: 1200),
+      expect: () => [
+        isA<WorkoutPainRest>().having(
+          (s) => s.restDurationSeconds,
+          'duration',
+          1,
+        ),
+        isA<WorkoutInProgress>()
+            .having((s) => s.currentExerciseIndex, 'exerciseIndex', 0)
+            .having((s) => s.elapsedSeconds, 'elapsedSeconds', 100),
+      ],
     );
 
     blocTest<WorkoutCubit, WorkoutState>(
@@ -146,10 +204,16 @@ void main() {
         cubit.painFlowBack(); // Intensity -> Location
       },
       expect: () => [
-        isA<WorkoutPainReported>()
-            .having((s) => s.step, 'step', PainFlowStep.intensity),
-        isA<WorkoutPainReported>()
-            .having((s) => s.step, 'step', PainFlowStep.location),
+        isA<WorkoutPainReported>().having(
+          (s) => s.step,
+          'step',
+          PainFlowStep.intensity,
+        ),
+        isA<WorkoutPainReported>().having(
+          (s) => s.step,
+          'step',
+          PainFlowStep.location,
+        ),
       ],
     );
   });

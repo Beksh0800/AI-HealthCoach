@@ -83,8 +83,7 @@ void main() {
     });
 
     test('strips <think> blocks from DeepSeek', () {
-      const input =
-          '<think>Let me analyze this...</think>{"key": "value"}';
+      const input = '<think>Let me analyze this...</think>{"key": "value"}';
       expect(service.cleanJsonResponse(input), '{"key": "value"}');
     });
 
@@ -95,8 +94,7 @@ void main() {
     });
 
     test('handles combined fences + think blocks', () {
-      const input =
-          '```json\n<think>reasoning</think>{"data": true}\n```';
+      const input = '```json\n<think>reasoning</think>{"data": true}\n```';
       expect(service.cleanJsonResponse(input), '{"data": true}');
     });
 
@@ -147,7 +145,7 @@ void main() {
     test('ignores escaped quotes', () {
       // "key": "val\"ue
       // quote count = 3 (1st, 2nd, 3rd is escaped, 4th is missing)
-      const input = r'{"key": "val\"ue'; 
+      const input = r'{"key": "val\"ue';
       expect(service.repairJson(input), r'{"key": "val\"ue"}');
     });
 
@@ -193,10 +191,7 @@ void main() {
     });
 
     test('defaults to moderate when duration is missing', () {
-      expect(
-        service.inferIntensity({}),
-        WorkoutIntensity.moderate,
-      );
+      expect(service.inferIntensity({}), WorkoutIntensity.moderate);
     });
   });
 
@@ -345,12 +340,8 @@ void main() {
     });
 
     test('handles JSON wrapped in markdown fences', () {
-      final json = '```json\n${jsonEncode({
-        'title': 'Test',
-        'warmup': [],
-        'main_exercises': [],
-        'cooldown': [],
-      })}\n```';
+      final json =
+          '```json\n${jsonEncode({'title': 'Test', 'warmup': [], 'main_exercises': [], 'cooldown': []})}\n```';
 
       final workout = service.parseWorkoutResponse(
         json,
@@ -411,6 +402,44 @@ void main() {
       expect(workout.warmup.first.name, 'Растяжка "Четверка"');
     });
 
+    test('removes technical exercise key tails in square brackets', () {
+      final json = jsonEncode({
+        'title': 'Тестовая тренировка',
+        'estimated_duration': 20,
+        'warmup': [
+          {
+            'name': 'Повороты шеи [lfk_neck_turns]',
+            'sets': 1,
+            'reps': 10,
+            'duration_seconds': 0,
+            'description': 'Легкая мобилизация шеи',
+          },
+        ],
+        'main_exercises': [
+          {
+            'name': '[lfk_cat_cow]',
+            'sets': 2,
+            'reps': 8,
+            'duration_seconds': 0,
+            'description': 'Мобилизация позвоночника',
+          },
+        ],
+        'cooldown': [],
+      });
+
+      final workout = service.parseWorkoutResponse(
+        json,
+        'uid',
+        'cid',
+        WorkoutTypes.lfk,
+      );
+
+      expect(workout.warmup.first.exerciseId, 'lfk_neck_turns');
+      expect(workout.warmup.first.name, 'Повороты шеи');
+      expect(workout.mainExercises.first.exerciseId, 'lfk_cat_cow');
+      expect(workout.mainExercises.first.name, 'Cat Cow');
+    });
+
     test('throws on invalid JSON', () {
       expect(
         () => service.parseWorkoutResponse(
@@ -440,16 +469,17 @@ void main() {
       });
 
       final retryService = GeminiService(
-        providerExecutorOverride: ({
-          required String prompt,
-          bool jsonMode = false,
-          int maxTokens = 4096,
-          double temperature = 0.7,
-          int maxRetries = 1,
-        }) async {
-          callCount++;
-          return callCount == 1 ? 'not json at all' : validJson;
-        },
+        providerExecutorOverride:
+            ({
+              required String prompt,
+              bool jsonMode = false,
+              int maxTokens = 4096,
+              double temperature = 0.7,
+              int maxRetries = 1,
+            }) async {
+              callCount++;
+              return callCount == 1 ? 'not json at all' : validJson;
+            },
       );
 
       final workout = await retryService.generateWorkout(
@@ -467,16 +497,17 @@ void main() {
       var callCount = 0;
 
       final retryService = GeminiService(
-        providerExecutorOverride: ({
-          required String prompt,
-          bool jsonMode = false,
-          int maxTokens = 4096,
-          double temperature = 0.7,
-          int maxRetries = 1,
-        }) async {
-          callCount++;
-          return 'still not json';
-        },
+        providerExecutorOverride:
+            ({
+              required String prompt,
+              bool jsonMode = false,
+              int maxTokens = 4096,
+              double temperature = 0.7,
+              int maxRetries = 1,
+            }) async {
+              callCount++;
+              return 'still not json';
+            },
       );
 
       await expectLater(
@@ -536,10 +567,7 @@ void main() {
     });
 
     test('uses default recovery plan when recovery_plan field is missing', () {
-      final json = jsonEncode({
-        'title': 'Done',
-        'summary': 'OK',
-      });
+      final json = jsonEncode({'title': 'Done', 'summary': 'OK'});
 
       final feedback = service.parsePostWorkoutFeedback(json, 'lfk', 20, 0);
       expect(feedback.recoveryPlan, isNotNull);
@@ -548,8 +576,12 @@ void main() {
     test('uses default values for missing fields', () {
       final json = jsonEncode({});
 
-      final feedback =
-          service.parsePostWorkoutFeedback(json, 'stretching', 15, 0);
+      final feedback = service.parsePostWorkoutFeedback(
+        json,
+        'stretching',
+        15,
+        0,
+      );
 
       expect(feedback.title, '✅ Тренировка завершена');
       expect(feedback.summary, 'Вы отлично поработали!');
@@ -600,7 +632,7 @@ void main() {
         recentWorkoutCount: 1,
       );
 
-      // painLevel >= 7 → suggestedIntensity is 'отдых', 
+      // painLevel >= 7 → suggestedIntensity is 'отдых',
       // but also high pain override → adjustedIntensity = light
       expect(result.adjustedIntensity, WorkoutIntensity.light);
     });
@@ -621,7 +653,12 @@ void main() {
     test('combines recurring pain + recovery week', () async {
       final result = await service.getPainAdaptedIntensity(
         todayCheckIn: makeCheckIn(painLevel: 2, energyLevel: 4),
-        recentPainReports: ['Плечи', 'Плечи', 'Спина (поясница)', 'Спина (поясница)'],
+        recentPainReports: [
+          'Плечи',
+          'Плечи',
+          'Спина (поясница)',
+          'Спина (поясница)',
+        ],
         recentWorkoutCount: 5,
       );
 

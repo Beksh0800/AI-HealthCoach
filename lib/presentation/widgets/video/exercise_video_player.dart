@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'exercise_video_resolver.dart';
+import '../../../gen/app_localizations.dart';
 
 class ExerciseVideoPlayer extends StatefulWidget {
   const ExerciseVideoPlayer({
@@ -128,7 +129,7 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
         child: _buildPlaceholderCard(
           key: const Key('video_kind_youtube'),
           icon: Icons.ondemand_video,
-          title: 'YouTube видео',
+          title: AppLocalizations.of(context).videoYoutube,
         ),
       );
     }
@@ -150,7 +151,7 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
         child: _buildPlaceholderCard(
           key: const Key('video_kind_network'),
           icon: Icons.play_circle_fill,
-          title: 'Видео',
+          title: AppLocalizations.of(context).videoNetwork,
         ),
       );
     }
@@ -207,17 +208,17 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
         children: [
           const Icon(Icons.travel_explore, color: Colors.orange, size: 36),
           const SizedBox(height: 8),
-          const Text(
-            'Видео доступно через поиск YouTube',
+          Text(
+            AppLocalizations.of(context).videoSearchAvailable,
             textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           ElevatedButton.icon(
             key: const Key('video_search_button'),
             onPressed: widget.onOpenSearchTap,
             icon: const Icon(Icons.open_in_browser),
-            label: const Text('Открыть поиск в приложении'),
+            label: Text(AppLocalizations.of(context).videoOpenSearch),
           ),
         ],
       ),
@@ -228,7 +229,7 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
     return _buildPlaceholderCard(
       key: const Key('video_kind_unsupported'),
       icon: Icons.video_library_outlined,
-      title: 'Видео недоступно',
+      title: AppLocalizations.of(context).videoUnsupported,
     );
   }
 

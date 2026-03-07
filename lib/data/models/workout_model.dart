@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
+
+import '../../core/utils/exercise_localization_utils.dart';
 import 'exercise_model.dart';
 
 /// Model for a single exercise in a workout
 /// Model for a single exercise in a workout
-class WorkoutExercise {
+class WorkoutExercise extends Equatable {
   final String? exerciseId;
   final String name;
   final String description;
@@ -21,7 +24,7 @@ class WorkoutExercise {
   final List<String> targetMuscles;
   final List<String> contraindications;
 
-  WorkoutExercise({
+  const WorkoutExercise({
     this.exerciseId,
     required this.name,
     required this.description,
@@ -89,6 +92,23 @@ class WorkoutExercise {
     );
   }
 
+  @override
+  List<Object?> get props => [
+    exerciseId,
+    name,
+    description,
+    sets,
+    reps,
+    durationSeconds,
+    restSeconds,
+    imageUrl,
+    videoUrl,
+    mediaType,
+    source,
+    license,
+    difficulty,
+  ];
+
   Map<String, dynamic> toMap() {
     return {
       'exercise_id': exerciseId,
@@ -111,9 +131,14 @@ class WorkoutExercise {
   }
 
   factory WorkoutExercise.fromMap(Map<String, dynamic> map) {
+    final resolvedName = ExerciseLocalizationUtils.normalizeExerciseName(
+      rawName: map['name']?.toString() ?? '',
+      exerciseId: map['exercise_id']?.toString(),
+    );
+
     return WorkoutExercise(
-      exerciseId: map['exercise_id'],
-      name: map['name'] ?? '',
+      exerciseId: resolvedName.exerciseId,
+      name: resolvedName.cleanName,
       description: map['description'] ?? '',
       sets: map['sets']?.toInt() ?? 1,
       reps: map['reps']?.toInt() ?? 0,
@@ -133,7 +158,7 @@ class WorkoutExercise {
 }
 
 /// Model for a complete workout session
-class Workout {
+class Workout extends Equatable {
   final String id;
   final String userUid;
   final String title;
@@ -168,8 +193,28 @@ class Workout {
   int get totalExercises =>
       warmup.length + mainExercises.length + cooldown.length;
 
+  @override
+  List<Object?> get props => [
+    id,
+    userUid,
+    title,
+    description,
+    type,
+    intensity,
+    estimatedDuration,
+    warmup,
+    mainExercises,
+    cooldown,
+    createdAt,
+    checkInId,
+  ];
+
   /// Get all exercises in order
-  List<WorkoutExercise> get allExercises => [...warmup, ...mainExercises, ...cooldown];
+  List<WorkoutExercise> get allExercises => [
+    ...warmup,
+    ...mainExercises,
+    ...cooldown,
+  ];
 
   Map<String, dynamic> toMap() {
     return {
@@ -197,15 +242,18 @@ class Workout {
       type: map['type'] ?? 'lfk',
       intensity: map['intensity'] ?? 'moderate',
       estimatedDuration: map['estimated_duration']?.toInt() ?? 30,
-      warmup: (map['warmup'] as List<dynamic>?)
+      warmup:
+          (map['warmup'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
-      mainExercises: (map['main_exercises'] as List<dynamic>?)
+      mainExercises:
+          (map['main_exercises'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
-      cooldown: (map['cooldown'] as List<dynamic>?)
+      cooldown:
+          (map['cooldown'] as List<dynamic>?)
               ?.map((e) => WorkoutExercise.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],

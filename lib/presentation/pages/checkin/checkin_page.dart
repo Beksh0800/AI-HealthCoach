@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/router/app_router.dart';
+import '../../../core/router/tab_branch_navigation.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_localization_utils.dart';
+import '../../../core/utils/workout_localization_utils.dart';
 import '../../../data/models/daily_checkin_model.dart';
 import '../../blocs/checkin/checkin_cubit.dart';
 
@@ -39,23 +42,39 @@ class _CheckInPageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Как ты себя чувствуешь?'),
+        title: Text(AppLocalizations.of(context).checkinTitle),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.go(AppRoutes.home),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.goToTabBranch(AppTabBranch.home);
+          },
         ),
       ),
       body: BlocConsumer<CheckInCubit, CheckInState>(
         listener: (context, state) {
           if (state is CheckInCompleted) {
             // Navigate to workout generation
-            context.go(AppRoutes.workout, extra: initialWorkoutType);
+            context.goToTabBranch(
+              AppTabBranch.workout,
+              extra: initialWorkoutType,
+            );
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
                   state.checkIn.isWorkoutRecommended
-                      ? 'Готово! Рекомендуемая интенсивность: ${state.checkIn.suggestedIntensity}'
-                      : 'Сегодня лучше отдохнуть 🛌',
+                      ? AppLocalizations.of(
+                          context,
+                        ).checkinRecommendedIntensity(
+                          WorkoutLocalizationUtils.localizedIntensity(
+                            AppLocalizations.of(context),
+                            state.checkIn.suggestedIntensity,
+                          ),
+                        )
+                      : AppLocalizations.of(context).checkinBetterRest,
                 ),
                 backgroundColor: AppColors.success,
               ),
@@ -86,12 +105,18 @@ class _CheckInPageContent extends StatelessWidget {
                     color: AppColors.error,
                   ),
                   const SizedBox(height: 16),
-                  Text(state.message),
+                  Text(
+                    ErrorLocalizationUtils.localize(
+                      context,
+                      state.errorCode,
+                      fallbackMessage: state.debugMessage,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () =>
                         context.read<CheckInCubit>().checkTodayStatus(),
-                    child: const Text('Попробовать снова'),
+                    child: Text(AppLocalizations.of(context).checkinTryAgain),
                   ),
                 ],
               ),
@@ -116,9 +141,9 @@ class _CheckInPageContent extends StatelessWidget {
           children: [
             const Icon(Icons.check_circle, size: 80, color: AppColors.success),
             const SizedBox(height: 24),
-            const Text(
-              'Опрос уже пройден сегодня!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context).checkinAlreadyCompleted,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -128,29 +153,32 @@ class _CheckInPageContent extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildInfoRow(
-                      'Уровень боли',
+                      AppLocalizations.of(context).checkinPainLevel,
                       '${checkIn.painLevel}/10',
                       Icons.healing,
                     ),
                     _buildInfoRow(
-                      'Энергия',
+                      AppLocalizations.of(context).checkinEnergy,
                       '${checkIn.energyLevel}/5',
                       Icons.bolt,
                     ),
                     _buildInfoRow(
-                      'Сон',
+                      AppLocalizations.of(context).checkinSleep,
                       '${checkIn.sleepQuality}/5',
                       Icons.bedtime,
                     ),
                     _buildInfoRow(
-                      'Настроение',
-                      CheckInConstants.moodLabels[checkIn.mood] ?? checkIn.mood,
+                      AppLocalizations.of(context).checkinMood,
+                      _getMoodLabel(context, checkIn.mood),
                       Icons.mood,
                     ),
                     const Divider(),
                     _buildInfoRow(
-                      'Рекомендация',
-                      checkIn.suggestedIntensity,
+                      AppLocalizations.of(context).checkinRecommendation,
+                      WorkoutLocalizationUtils.localizedIntensity(
+                        AppLocalizations.of(context),
+                        checkIn.suggestedIntensity,
+                      ),
                       Icons.fitness_center,
                     ),
                   ],
@@ -159,14 +187,16 @@ class _CheckInPageContent extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () =>
-                  context.go(AppRoutes.workout, extra: initialWorkoutType),
-              child: const Text('К тренировке'),
+              onPressed: () => context.goToTabBranch(
+                AppTabBranch.workout,
+                extra: initialWorkoutType,
+              ),
+              child: Text(AppLocalizations.of(context).checkinToWorkout),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => context.read<CheckInCubit>().startCheckIn(),
-              child: const Text('Пройти снова'),
+              child: Text(AppLocalizations.of(context).checkinRedoSurvey),
             ),
           ],
         ),
@@ -231,7 +261,9 @@ class _CheckInPageContent extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () =>
                           context.read<CheckInCubit>().previousStep(),
-                      child: const Text('Назад'),
+                      child: Text(
+                        AppLocalizations.of(context).onboardingBtnBack,
+                      ),
                     ),
                   ),
                 if (state.currentStep > 0) const SizedBox(width: 16),
@@ -244,7 +276,11 @@ class _CheckInPageContent extends StatelessWidget {
                         context.read<CheckInCubit>().nextStep();
                       }
                     },
-                    child: Text(state.currentStep == 3 ? 'Завершить' : 'Далее'),
+                    child: Text(
+                      state.currentStep == 3
+                          ? AppLocalizations.of(context).onboardingBtnFinish
+                          : AppLocalizations.of(context).onboardingBtnNext,
+                    ),
                   ),
                 ),
               ],
@@ -274,13 +310,13 @@ class _CheckInPageContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Уровень боли',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).checkinPainLevel,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'Оцени свой текущий уровень боли от 0 до 10',
+          AppLocalizations.of(context).checkinPainDescription,
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 32),
@@ -310,24 +346,27 @@ class _CheckInPageContent extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Нет боли', style: TextStyle(color: AppColors.textSecondary)),
             Text(
-              'Сильная боль',
+              AppLocalizations.of(context).checkinNoPain,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            Text(
+              AppLocalizations.of(context).checkinStrongPain,
               style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
         if (state.painLevel > 0) ...[
           const SizedBox(height: 32),
-          const Text(
-            'Где болит?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          Text(
+            AppLocalizations.of(context).checkinWhereHurts,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: CheckInConstants.painLocations.map((location) {
+            children: _painLocations(context).map((location) {
               final isSelected = state.painLocation == location;
               return ChoiceChip(
                 label: Text(location),
@@ -349,13 +388,13 @@ class _CheckInPageContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Уровень энергии',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).checkinEnergyLevel,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'Как ты оцениваешь свою энергию сегодня?',
+          AppLocalizations.of(context).checkinEnergyDescription,
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 32),
@@ -363,11 +402,11 @@ class _CheckInPageContent extends StatelessWidget {
           final level = index + 1;
           final isSelected = state.energyLevel == level;
           final labels = [
-            'Очень низкий',
-            'Низкий',
-            'Средний',
-            'Высокий',
-            'Очень высокий',
+            AppLocalizations.of(context).energyVeryLow,
+            AppLocalizations.of(context).energyLow,
+            AppLocalizations.of(context).energyMedium,
+            AppLocalizations.of(context).energyHigh,
+            AppLocalizations.of(context).energyVeryHigh,
           ];
           final icons = [
             Icons.battery_0_bar,
@@ -428,9 +467,9 @@ class _CheckInPageContent extends StatelessWidget {
           );
         }),
         const SizedBox(height: 24),
-        const Text(
-          'Качество сна',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        Text(
+          AppLocalizations.of(context).checkinSleepQuality,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         Row(
@@ -472,11 +511,11 @@ class _CheckInPageContent extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Плохо',
+              AppLocalizations.of(context).checkinSleepBad,
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             Text(
-              'Отлично',
+              AppLocalizations.of(context).checkinSleepGreat,
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
@@ -489,13 +528,13 @@ class _CheckInPageContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Настроение',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).checkinMoodTitle,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'Как ты себя чувствуешь эмоционально?',
+          AppLocalizations.of(context).checkinMoodDescription,
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 32),
@@ -508,8 +547,8 @@ class _CheckInPageContent extends StatelessWidget {
           childAspectRatio: 1.5,
           children: CheckInConstants.moods.map((mood) {
             final isSelected = state.mood == mood;
-            final label = CheckInConstants.moodLabels[mood] ?? mood;
-            final emoji = CheckInConstants.moodEmojis[mood] ?? '😐';
+            final label = _getMoodLabel(context, mood);
+            final emoji = _getMoodEmoji(mood);
 
             return GestureDetector(
               onTap: () => context.read<CheckInCubit>().updateMood(mood),
@@ -532,7 +571,7 @@ class _CheckInPageContent extends StatelessWidget {
                     Text(emoji, style: const TextStyle(fontSize: 32)),
                     const SizedBox(height: 8),
                     Text(
-                      label.split(' ')[0],
+                      label,
                       style: TextStyle(
                         fontWeight: isSelected
                             ? FontWeight.w600
@@ -556,20 +595,20 @@ class _CheckInPageContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Дополнительные симптомы',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).checkinSymptomsTitle,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'Отметь, если есть какие-либо симптомы (необязательно)',
+          AppLocalizations.of(context).checkinSymptomsDescription,
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 24),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: CheckInConstants.commonSymptoms.map((symptom) {
+          children: _symptoms(context).map((symptom) {
             final isSelected = state.symptoms.contains(symptom);
             return FilterChip(
               label: Text(symptom),
@@ -582,16 +621,16 @@ class _CheckInPageContent extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 32),
-        const Text(
-          'Заметки',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        Text(
+          AppLocalizations.of(context).checkinNotes,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         TextField(
           maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Дополнительная информация (необязательно)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: AppLocalizations.of(context).checkinNotesHint,
+            border: const OutlineInputBorder(),
           ),
           onChanged: (value) => context.read<CheckInCubit>().updateNotes(
             value.isEmpty ? null : value,
@@ -620,7 +659,7 @@ class _CheckInPageContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Рекомендация',
+                      AppLocalizations.of(context).checkinRecommendation,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: _getSummaryColor(state),
@@ -628,7 +667,7 @@ class _CheckInPageContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _getSummaryText(state),
+                      _getSummaryText(context, state),
                       style: TextStyle(color: _getSummaryColor(state)),
                     ),
                   ],
@@ -663,16 +702,76 @@ class _CheckInPageContent extends StatelessWidget {
     return Icons.fitness_center;
   }
 
-  String _getSummaryText(CheckInInProgress state) {
+  String _getSummaryText(BuildContext context, CheckInInProgress state) {
     if (state.painLevel >= 7) {
-      return 'Сегодня рекомендуется отдых. Берегите себя!';
+      return AppLocalizations.of(context).checkinSummaryRest;
     }
     if (state.painLevel >= 4 || state.energyLevel <= 2) {
-      return 'Рекомендуется легкая тренировка с акцентом на растяжку';
+      return AppLocalizations.of(context).checkinSummaryLight;
     }
     if (state.energyLevel >= 4 && state.painLevel <= 2) {
-      return 'Отличное состояние! Можно выполнить полноценную тренировку';
+      return AppLocalizations.of(context).checkinSummaryGreat;
     }
-    return 'Рекомендуется умеренная тренировка';
+    return AppLocalizations.of(context).checkinSummaryModerate;
+  }
+
+  List<String> _painLocations(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      l10n.checkinNoPain,
+      l10n.painLocationNeck,
+      l10n.painLocationUpperBack,
+      l10n.painLocationLowerBack,
+      l10n.painLocationShoulders,
+      l10n.painLocationKnees,
+      l10n.checkinPainLocationOther,
+    ];
+  }
+
+  List<String> _symptoms(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      l10n.checkinSymptomHeadache,
+      l10n.checkinSymptomBackPain,
+      l10n.checkinSymptomMuscleStiffness,
+      l10n.checkinSymptomFatigue,
+      l10n.checkinSymptomNausea,
+      l10n.checkinSymptomDizziness,
+    ];
+  }
+
+  String _getMoodLabel(BuildContext context, String mood) {
+    final l10n = AppLocalizations.of(context);
+    switch (mood) {
+      case 'happy':
+        return l10n.checkinMoodHappy;
+      case 'energized':
+        return l10n.checkinMoodEnergized;
+      case 'neutral':
+        return l10n.checkinMoodNeutral;
+      case 'tired':
+        return l10n.checkinMoodTired;
+      case 'stressed':
+        return l10n.checkinMoodStressed;
+      default:
+        return mood;
+    }
+  }
+
+  String _getMoodEmoji(String mood) {
+    switch (mood) {
+      case 'happy':
+        return '😊';
+      case 'energized':
+        return '💪';
+      case 'neutral':
+        return '😐';
+      case 'tired':
+        return '😴';
+      case 'stressed':
+        return '😰';
+      default:
+        return '😐';
+    }
   }
 }

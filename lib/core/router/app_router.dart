@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../gen/app_localizations.dart';
 
 import '../../core/di/injection_container.dart';
 import '../../data/services/analytics_service.dart';
@@ -43,9 +44,7 @@ class AppRouter {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
-    observers: [
-      sl<AnalyticsService>().getAnalyticsObserver(),
-    ],
+    observers: [sl<AnalyticsService>().getAnalyticsObserver()],
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -71,7 +70,7 @@ class AppRouter {
 
         builder: (context, state) => const OnboardingPage(),
       ),
-      
+
       // Stateful Nested Navigation (Bottom Nav Bar)
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -88,7 +87,7 @@ class AppRouter {
               ),
             ],
           ),
-          
+
           // Branch 2: Workout Generation
           StatefulShellBranch(
             routes: [
@@ -102,7 +101,7 @@ class AppRouter {
               ),
             ],
           ),
-          
+
           // Branch 3: History
           StatefulShellBranch(
             routes: [
@@ -113,7 +112,7 @@ class AppRouter {
               ),
             ],
           ),
-          
+
           // Branch 4: Profile
           StatefulShellBranch(
             routes: [
@@ -144,28 +143,22 @@ class AppRouter {
         path: AppRoutes.workoutPreview,
         name: 'workoutPreview',
 
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const WorkoutPreviewPage(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const WorkoutPreviewPage()),
       ),
       GoRoute(
         path: AppRoutes.workoutPlayer,
         name: 'workoutPlayer',
 
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const WorkoutPlayerPage(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: WorkoutPlayerPage()),
       ),
       GoRoute(
         path: AppRoutes.settings,
         name: 'settings',
 
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const SettingsPage(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const SettingsPage()),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -176,7 +169,7 @@ class AppRouter {
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
-              'Страница не найдена',
+              AppLocalizations.of(context).routeNotFound,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
@@ -187,7 +180,7 @@ class AppRouter {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => context.go(AppRoutes.home),
-              child: const Text('На главную'),
+              child: Text(AppLocalizations.of(context).navHome),
             ),
           ],
         ),
@@ -197,4 +190,3 @@ class AppRouter {
 }
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-

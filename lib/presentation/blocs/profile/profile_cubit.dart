@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/error_mapper.dart';
+import '../../../core/utils/profile_value_utils.dart';
 import '../../../data/models/user_profile_model.dart';
 import '../../../domain/repositories/i_user_repository.dart';
 
@@ -41,13 +42,14 @@ class ProfileCubit extends Cubit<ProfileState> {
         emit(const ProfileNotFound());
       }
     } catch (e) {
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'PROFILE_LOAD_FAILED',
+      );
       emit(
         ProfileError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage:
-                'Не удалось загрузить профиль. Проверьте соединение.',
-          ),
+          errorCode: mapped.code ?? 'PROFILE_LOAD_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -73,12 +75,14 @@ class ProfileCubit extends Cubit<ProfileState> {
             }
           },
           onError: (error) {
+            final mapped = ErrorMapper.toAppException(
+              error,
+              fallbackCode: 'PROFILE_SYNC_FAILED',
+            );
             emit(
               ProfileError(
-                ErrorMapper.toMessage(
-                  error,
-                  fallbackMessage: 'Ошибка синхронизации профиля.',
-                ),
+                errorCode: mapped.code ?? 'PROFILE_SYNC_FAILED',
+                debugMessage: mapped.message,
               ),
             );
           },
@@ -99,12 +103,14 @@ class ProfileCubit extends Cubit<ProfileState> {
       if (currentState is ProfileLoaded) {
         emit(currentState);
       }
+      final mapped = ErrorMapper.toAppException(
+        e,
+        fallbackCode: 'PROFILE_SAVE_FAILED',
+      );
       emit(
         ProfileError(
-          ErrorMapper.toMessage(
-            e,
-            fallbackMessage: 'Не удалось обновить профиль. Попробуйте позже.',
-          ),
+          errorCode: mapped.code ?? 'PROFILE_SAVE_FAILED',
+          debugMessage: mapped.message,
         ),
       );
     }
@@ -132,8 +138,11 @@ class ProfileCubit extends Cubit<ProfileState> {
     final sanitizedName = sanitizedNameRaw.isEmpty
         ? currentProfile.name
         : sanitizedNameRaw;
-    final sanitizedGoals = _sanitizeText(
+    final normalizedGoals = ProfileValueUtils.normalizeGoalValue(
       goals ?? currentProfile.goals,
+    );
+    final sanitizedGoals = _sanitizeText(
+      normalizedGoals,
       AppConstants.maxGoalsLength,
     );
     final sanitizedAge = _clampInt(
@@ -154,6 +163,9 @@ class ProfileCubit extends Cubit<ProfileState> {
     final sanitizedGender = _normalizeGender(
       gender ?? currentProfile.medicalProfile.gender,
     );
+    final sanitizedActivity = ProfileValueUtils.normalizeActivityCode(
+      activityLevel ?? currentProfile.medicalProfile.activityLevel,
+    );
     final sanitizedInjuries = _sanitizeInjuries(
       injuries ?? currentProfile.medicalProfile.injuries,
     );
@@ -169,8 +181,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         weight: sanitizedWeight,
         height: sanitizedHeight,
         gender: sanitizedGender,
-        activityLevel:
-            activityLevel ?? currentProfile.medicalProfile.activityLevel,
+        activityLevel: sanitizedActivity,
         injuries: sanitizedInjuries,
         contraindications: contraindications,
       ),

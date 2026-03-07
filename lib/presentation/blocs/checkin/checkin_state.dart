@@ -31,7 +31,7 @@ class CheckInInProgress extends CheckInState {
   const CheckInInProgress({
     this.currentStep = 0,
     this.painLevel = 0,
-    this.painLocation = 'Нет боли',
+    this.painLocation = '',
     this.energyLevel = 3,
     this.sleepQuality = 3,
     this.mood = 'neutral',
@@ -41,15 +41,15 @@ class CheckInInProgress extends CheckInState {
 
   @override
   List<Object?> get props => [
-        currentStep,
-        painLevel,
-        painLocation,
-        energyLevel,
-        sleepQuality,
-        mood,
-        symptoms,
-        notes,
-      ];
+    currentStep,
+    painLevel,
+    painLocation,
+    energyLevel,
+    sleepQuality,
+    mood,
+    symptoms,
+    notes,
+  ];
 
   CheckInInProgress copyWith({
     int? currentStep,
@@ -96,10 +96,11 @@ class CheckInAlreadyCompleted extends CheckInState {
 
 /// Error state
 class CheckInError extends CheckInState {
-  final String message;
+  final String errorCode;
+  final String? debugMessage;
 
-  const CheckInError(this.message);
+  const CheckInError({required this.errorCode, this.debugMessage});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [errorCode, debugMessage];
 }

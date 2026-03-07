@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
+import '../../core/router/tab_branch_navigation.dart';
 import '../../core/theme/app_colors.dart';
 import '../blocs/auth/auth_cubit.dart';
 
@@ -72,7 +74,7 @@ class _SplashPageState extends State<SplashPage>
 
     if (state is AuthAuthenticated) {
       if (state.hasCompletedOnboarding) {
-        context.go(AppRoutes.home);
+        context.goToTabBranch(AppTabBranch.home);
       } else {
         context.go(AppRoutes.onboarding);
       }
@@ -138,7 +140,7 @@ class _SplashPageState extends State<SplashPage>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Твой персональный тренер',
+                        AppLocalizations.of(context).splashSubtitle,
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white.withValues(alpha: 0.8),

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../gen/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../blocs/auth/auth_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/router/tab_branch_navigation.dart';
+import '../../../core/utils/error_localization_utils.dart';
 
 /// Login page with email and password
 class LoginPage extends StatefulWidget {
@@ -43,14 +46,20 @@ class _LoginPageState extends State<LoginPage> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             if (state.hasCompletedOnboarding) {
-              context.go(AppRoutes.home);
+              context.goToTabBranch(AppTabBranch.home);
             } else {
               context.go(AppRoutes.onboarding);
             }
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(
+                  ErrorLocalizationUtils.localize(
+                    context,
+                    state.errorCode,
+                    fallbackMessage: state.debugMessage,
+                  ),
+                ),
                 backgroundColor: AppColors.error,
               ),
             );
@@ -107,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 24),
         Text(
-          'С возвращением!',
+          AppLocalizations.of(context).loginTitle,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -115,10 +124,10 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Войдите, чтобы продолжить тренировки',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          AppLocalizations.of(context).loginSubtitle,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
@@ -139,11 +148,12 @@ class _LoginPageState extends State<LoginPage> {
               prefixIcon: Icon(Icons.email_outlined),
             ),
             validator: (value) {
+              final loc = AppLocalizations.of(context);
               if (value == null || value.isEmpty) {
-                return 'Введите email';
+                return loc.authErrorEmailEmpty;
               }
               if (!value.contains('@')) {
-                return 'Неверный формат email';
+                return loc.authErrorEmailInvalid;
               }
               return null;
             },
@@ -153,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
             controller: _passwordController,
             obscureText: _obscurePassword,
             decoration: InputDecoration(
-              labelText: 'Пароль',
+              labelText: AppLocalizations.of(context).loginPasswordLabel,
               hintText: '••••••••',
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
@@ -168,11 +178,12 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             validator: (value) {
+              final loc = AppLocalizations.of(context);
               if (value == null || value.isEmpty) {
-                return 'Введите пароль';
+                return loc.authErrorPasswordEmpty;
               }
               if (value.length < 6) {
-                return 'Пароль должен быть не менее 6 символов';
+                return loc.authErrorPasswordShort;
               }
               return null;
             },
@@ -201,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                     color: Colors.white,
                   ),
                 )
-              : const Text('Войти'),
+              : Text(AppLocalizations.of(context).loginButton),
         );
       },
     );
@@ -211,13 +222,13 @@ class _LoginPageState extends State<LoginPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          'Нет аккаунта? ',
-          style: TextStyle(color: AppColors.textSecondary),
+        Text(
+          AppLocalizations.of(context).loginNoAccount,
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         TextButton(
           onPressed: () => context.go(AppRoutes.register),
-          child: const Text('Зарегистрироваться'),
+          child: Text(AppLocalizations.of(context).loginRegisterLink),
         ),
       ],
     );

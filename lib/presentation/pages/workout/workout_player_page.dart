@@ -1,71 +1,322 @@
+﻿import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/router/tab_branch_navigation.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/ai_text_localization_utils.dart';
+import '../../../core/utils/exercise_localization_utils.dart';
+import '../../../core/utils/workout_localization_utils.dart';
 import '../../../data/models/exercise_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../data/models/recovery_plan_model.dart';
 import '../../../data/models/ai_feedback_models.dart';
 import '../../blocs/workout/workout_cubit.dart';
+import '../../blocs/workout/workout_flow_route_target.dart';
+import '../../utils/ui_action_guard.dart';
 import '../../widgets/video/exercise_video_player.dart';
 import '../../widgets/video/exercise_video_resolver.dart';
 import 'exercise_search_webview_page.dart';
 import 'exercise_video_fullscreen_page.dart';
+import '../../../gen/app_localizations.dart';
 
 /// Page for playing/executing a workout
-class WorkoutPlayerPage extends StatelessWidget {
+class WorkoutPlayerPage extends StatefulWidget {
   const WorkoutPlayerPage({super.key});
+
+  @override
+  State<WorkoutPlayerPage> createState() => _WorkoutPlayerPageState();
+}
+
+class _WorkoutPlayerPageState extends State<WorkoutPlayerPage> {
+  final UiActionGuard<_WorkoutModalType> _uiActionGuard =
+      UiActionGuard<_WorkoutModalType>(debugLabel: 'WorkoutPlayerPage');
+  bool _isRecoveringFromInvalidState = false;
+
+  void _runGuardedAction(
+    BuildContext context, {
+    required String actionKey,
+    bool isModalAction = false,
+    _WorkoutModalType? modalType,
+    bool idempotentWhenSameModalOpen = false,
+    Duration minInterval = const Duration(milliseconds: 250),
+    required FutureOr<void> Function() action,
+  }) {
+    final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!isCurrentRoute) {
+      return;
+    }
+
+    if (isModalAction) {
+      if (modalType == null) {
+        debugPrint(
+          'WorkoutPlayerPage: Ignored "$actionKey" because modalType is required for modal actions',
+        );
+        return;
+      }
+
+      unawaited(
+        _uiActionGuard.runModal(
+          actionKey,
+          modalType: modalType,
+          action: action,
+          minInterval: minInterval,
+          idempotentWhenSameModalOpen: idempotentWhenSameModalOpen,
+        ),
+      );
+      return;
+    }
+
+    unawaited(_uiActionGuard.run(actionKey, action, minInterval: minInterval));
+  }
+
+  void _closeReadyFlow(BuildContext context) {
+    context.read<WorkoutCubit>().reset();
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.goToTabBranch(AppTabBranch.home);
+  }
+
+  void _recoverFromInvalidState(
+    BuildContext context,
+    WorkoutState state, {
+    required String source,
+  }) {
+    if (_isRecoveringFromInvalidState) {
+      return;
+    }
+    _isRecoveringFromInvalidState = true;
+
+    final target = state.routeTarget;
+    debugPrint(
+      'WorkoutPlayerPage: state mismatch recovery from $source, state=${state.runtimeType}, navigatingTo=$target',
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      switch (target) {
+        case WorkoutFlowRouteTarget.preview:
+          context.go(AppRoutes.workoutPreview);
+          break;
+        case WorkoutFlowRouteTarget.generation:
+          context.goToTabBranch(AppTabBranch.workout, initialLocation: true);
+          break;
+        case WorkoutFlowRouteTarget.player:
+          break;
+      }
+
+      _isRecoveringFromInvalidState = false;
+    });
+  }
+
+  void _handlePlayerBack(
+    BuildContext context,
+    WorkoutState state, {
+    required String source,
+  }) {
+    debugPrint(
+      'WorkoutPlayerPage: back pressed from $source, state=${state.runtimeType}',
+    );
+
+    if (state is WorkoutPainReported) {
+      if (state.step == PainFlowStep.location) {
+        context.read<WorkoutCubit>().cancelPainReport();
+      } else {
+        context.read<WorkoutCubit>().painFlowBack();
+      }
+      return;
+    }
+
+    if (state is WorkoutPainRest) {
+      context.read<WorkoutCubit>().cancelPainReport();
+      return;
+    }
+
+    if (state is WorkoutReady) {
+      _closeReadyFlow(context);
+      return;
+    }
+
+    if (state is WorkoutInProgress ||
+        state is WorkoutExerciseReplacing ||
+        state is WorkoutCompleted) {
+      _runGuardedAction(
+        context,
+        actionKey: 'workout_exit_confirmation_dialog',
+        isModalAction: true,
+        modalType: _WorkoutModalType.exit,
+        action: () => _showExitConfirmation(context),
+      );
+      return;
+    }
+
+    _recoverFromInvalidState(context, state, source: 'back_$source');
+  }
+
+  Widget _withBackHandler(
+    BuildContext context,
+    WorkoutState state,
+    Widget child,
+  ) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handlePlayerBack(context, state, source: 'system');
+      },
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<WorkoutCubit, WorkoutState>(
+      listenWhen: (previous, current) =>
+          previous is! WorkoutCompleted && current is WorkoutCompleted,
       listener: (context, state) {
         if (state is WorkoutCompleted) {
-          _showCompletionDialog(context, state);
+          _runGuardedAction(
+            context,
+            actionKey: 'workout_completion_dialog',
+            isModalAction: true,
+            modalType: _WorkoutModalType.completion,
+            action: () => _showCompletionDialog(context, state),
+          );
         }
+      },
+      // Only rebuild for structural changes.
+      // Elapsed/rest countdown are rendered by local timer widgets.
+      buildWhen: (previous, current) {
+        if (previous.runtimeType != current.runtimeType) return true;
+        if (previous is WorkoutInProgress && current is WorkoutInProgress) {
+          return previous.currentExerciseIndex !=
+                  current.currentExerciseIndex ||
+              previous.currentSet != current.currentSet ||
+              previous.isResting != current.isResting ||
+              previous.isPaused != current.isPaused ||
+              previous.workout != current.workout;
+        }
+        if (previous is WorkoutPainRest && current is WorkoutPainRest) {
+          // Pain-rest countdown is rendered separately — skip timer ticks
+          return previous.currentExerciseIndex !=
+                  current.currentExerciseIndex ||
+              previous.workout != current.workout;
+        }
+        if (previous is WorkoutPainReported && current is WorkoutPainReported) {
+          return previous.step != current.step ||
+              previous.painLocation != current.painLocation ||
+              previous.painIntensity != current.painIntensity;
+        }
+        return true;
       },
       builder: (context, state) {
         if (state is WorkoutReady) {
-          return _buildReadyView(context, state.workout);
+          return _withBackHandler(
+            context,
+            state,
+            _buildReadyView(context, state.workout),
+          );
         }
 
         if (state is WorkoutInProgress) {
-          return _buildPlayerView(context, state);
+          return _withBackHandler(
+            context,
+            state,
+            _buildPlayerView(context, state),
+          );
         }
 
         if (state is WorkoutPainReported) {
-          return _buildPainReportedView(context, state);
+          return _withBackHandler(
+            context,
+            state,
+            _buildPainReportedView(context, state),
+          );
         }
 
         if (state is WorkoutPainRest) {
-          return _buildPainRestView(context, state);
+          return _withBackHandler(
+            context,
+            state,
+            _buildPainRestView(context, state),
+          );
         }
 
         if (state is WorkoutExerciseReplacing) {
-          return _buildReplacingView(context, state);
+          return _withBackHandler(
+            context,
+            state,
+            _buildReplacingView(context, state),
+          );
         }
 
-        // Fallback - shouldn't happen
+        if (state is WorkoutCompleted) {
+          return _withBackHandler(
+            context,
+            state,
+            _buildWorkoutCompletedView(context),
+          );
+        }
+
+        _recoverFromInvalidState(context, state, source: 'build_fallback');
         return Scaffold(
-          appBar: AppBar(title: const Text('Тренировка')),
-          body: const Center(child: Text('Тренировка не найдена')),
+          appBar: AppBar(
+            title: Text(AppLocalizations.of(context).workoutPlayerTitle),
+          ),
+          body: const Center(child: CircularProgressIndicator()),
         );
       },
     );
   }
 
-  Widget _buildReadyView(BuildContext context, Workout workout) {
+  Widget _buildWorkoutCompletedView(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Готово к старту'),
+        title: Text(AppLocalizations.of(context).workoutPlayerTitle),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(AppLocalizations.of(context).completionAnalyzing),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadyView(BuildContext context, Workout workout) {
+    final l10n = AppLocalizations.of(context);
+    final localizedTitle = WorkoutLocalizationUtils.localizedWorkoutTitle(
+      l10n: l10n,
+      localeCode: Localizations.localeOf(context).languageCode,
+      type: workout.type,
+      rawTitle: workout.title,
+      sourceLanguageCode: workout.aiMetadata?['language_code'] as String?,
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.workoutPlayerReady),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () {
-            context.read<WorkoutCubit>().reset();
-            context.go(AppRoutes.home);
-          },
+          onPressed: () => _handlePlayerBack(
+            context,
+            WorkoutReady(workout),
+            source: 'appbar',
+          ),
         ),
       ),
       body: SafeArea(
@@ -97,7 +348,10 @@ class WorkoutPlayerPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            WorkoutTypes.labels[workout.type] ?? workout.type,
+                            WorkoutLocalizationUtils.localizedWorkoutType(
+                              l10n,
+                              workout.type,
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w500,
@@ -112,7 +366,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '~${workout.estimatedDuration} мин',
+                          '~${l10n.workoutMinutesShort(workout.estimatedDuration)}',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                           ),
@@ -121,7 +375,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      workout.title,
+                      localizedTitle,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -148,19 +402,22 @@ class WorkoutPlayerPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildExerciseSection(
-                        'Разминка',
+                        context,
+                        l10n.workoutPlayerWarmup,
                         workout.warmup,
                         Icons.wb_sunny,
                       ),
                       const SizedBox(height: 16),
                       _buildExerciseSection(
-                        'Основная часть',
+                        context,
+                        l10n.workoutPlayerMainPart,
                         workout.mainExercises,
                         Icons.fitness_center,
                       ),
                       const SizedBox(height: 16),
                       _buildExerciseSection(
-                        'Заминка',
+                        context,
+                        l10n.workoutPlayerCooldown,
                         workout.cooldown,
                         Icons.nightlight,
                       ),
@@ -175,7 +432,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () => context.read<WorkoutCubit>().startWorkout(),
                   icon: const Icon(Icons.play_arrow),
-                  label: const Text('Начать тренировку'),
+                  label: Text(l10n.workoutPlayerStartWorkout),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -189,6 +446,7 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   Widget _buildExerciseSection(
+    BuildContext context,
     String title,
     List<WorkoutExercise> exercises,
     IconData icon,
@@ -211,6 +469,7 @@ class WorkoutPlayerPage extends StatelessWidget {
         const SizedBox(height: 12),
         ...exercises.asMap().entries.map((entry) {
           final exercise = entry.value;
+          final displayName = _localizedExerciseName(context, exercise);
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
@@ -224,8 +483,13 @@ class WorkoutPlayerPage extends StatelessWidget {
                   ),
                 ),
               ),
-              title: Text(exercise.name),
-              subtitle: Text(exercise.displayFormat),
+              title: Text(displayName),
+              subtitle: Text(
+                WorkoutLocalizationUtils.localizedExerciseFormat(
+                  AppLocalizations.of(context),
+                  exercise,
+                ),
+              ),
               trailing: Icon(
                 Icons.chevron_right,
                 color: AppColors.textSecondary,
@@ -240,6 +504,7 @@ class WorkoutPlayerPage extends StatelessWidget {
   Widget _buildPlayerView(BuildContext context, WorkoutInProgress state) {
     final exercise = state.currentExercise;
     final isResting = state.isResting;
+    final displayName = _localizedExerciseName(context, exercise);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F5F7),
@@ -248,30 +513,48 @@ class WorkoutPlayerPage extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          exercise.name,
+          displayName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
+          key: const Key('workout_player_back_button'),
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => _showExitConfirmation(context),
+          onPressed: () => _handlePlayerBack(context, state, source: 'appbar'),
         ),
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'skip') {
-                context.read<WorkoutCubit>().skipExercise();
+                _runGuardedAction(
+                  context,
+                  actionKey: 'workout_skip_exercise',
+                  action: () => context.read<WorkoutCubit>().skipExercise(),
+                );
               } else if (value == 'exit') {
-                _showExitConfirmation(context);
+                _runGuardedAction(
+                  context,
+                  actionKey: 'workout_exit_confirmation_dialog',
+                  isModalAction: true,
+                  modalType: _WorkoutModalType.exit,
+                  action: () => _showExitConfirmation(context),
+                );
               }
             },
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'skip',
-                child: Text('Пропустить упражнение'),
+                child: Text(
+                  AppLocalizations.of(context).workoutPlayerSkipExercise,
+                ),
               ),
-              PopupMenuItem(value: 'exit', child: Text('Завершить тренировку')),
+              PopupMenuItem(
+                value: 'exit',
+                child: Text(
+                  AppLocalizations.of(context).workoutPlayerFinishWorkout,
+                ),
+              ),
             ],
             icon: const Icon(Icons.more_vert),
           ),
@@ -303,9 +586,14 @@ class WorkoutPlayerPage extends StatelessWidget {
                   child: _buildExerciseImage(context, exercise),
                 ),
                 const SizedBox(height: 10),
-                _buildLiveStatsRow(state, exercise),
+                _buildLiveStatsRow(context, state, exercise),
                 const SizedBox(height: 10),
-                _buildAiInsightCard(context, exercise),
+                _buildAiInsightCard(
+                  context,
+                  exercise,
+                  sourceLanguageCode:
+                      state.workout.aiMetadata?['language_code'] as String?,
+                ),
               ],
             ),
           ),
@@ -315,14 +603,18 @@ class WorkoutPlayerPage extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => context.read<WorkoutCubit>().reportPain(),
+              onPressed: () => _runGuardedAction(
+                context,
+                actionKey: 'workout_report_pain',
+                action: () => context.read<WorkoutCubit>().reportPain(),
+              ),
               icon: const Icon(
                 Icons.warning_amber_rounded,
                 color: Colors.white,
               ),
-              label: const Text(
-                'Боль / Дискомфорт',
-                style: TextStyle(
+              label: Text(
+                AppLocalizations.of(context).workoutPlayerPainButton,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -359,18 +651,29 @@ class WorkoutPlayerPage extends StatelessWidget {
                 children: [
                   IconButton.filledTonal(
                     onPressed: state.currentExerciseIndex > 0
-                        ? () => context.read<WorkoutCubit>().previousExercise()
+                        ? () => _runGuardedAction(
+                            context,
+                            actionKey: 'workout_previous_exercise',
+                            action: () =>
+                                context.read<WorkoutCubit>().previousExercise(),
+                          )
                         : null,
                     icon: const Icon(Icons.skip_previous_rounded),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      if (state.isPaused) {
-                        context.read<WorkoutCubit>().resumeWorkout();
-                      } else {
-                        context.read<WorkoutCubit>().pauseWorkout();
-                      }
+                      _runGuardedAction(
+                        context,
+                        actionKey: 'workout_toggle_pause',
+                        action: () {
+                          if (state.isPaused) {
+                            context.read<WorkoutCubit>().resumeWorkout();
+                          } else {
+                            context.read<WorkoutCubit>().pauseWorkout();
+                          }
+                        },
+                      );
                     },
                     child: Container(
                       width: 44,
@@ -390,12 +693,19 @@ class WorkoutPlayerPage extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
-                    onPressed: () => context.read<WorkoutCubit>().completeSet(),
+                    onPressed: () => _runGuardedAction(
+                      context,
+                      actionKey: 'workout_complete_set',
+                      action: () => context.read<WorkoutCubit>().completeSet(),
+                    ),
                     icon: const Icon(Icons.skip_next_rounded),
                   ),
                   const Spacer(),
                   Text(
-                    'Упражнение ${state.currentExerciseIndex + 1} из ${state.totalExercises}',
+                    AppLocalizations.of(context).workoutPlayerExerciseOf(
+                      state.currentExerciseIndex + 1,
+                      state.totalExercises,
+                    ),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -428,12 +738,9 @@ class WorkoutPlayerPage extends StatelessWidget {
     WorkoutInProgress state,
     WorkoutExercise exercise,
   ) {
-    final totalRest = exercise.restSeconds > 0 ? exercise.restSeconds : 30;
-    final remaining = (state.restRemainingSeconds ?? totalRest).clamp(
-      0,
-      totalRest,
-    );
-    final progress = 1 - (remaining / totalRest);
+    final totalRest = state.restDurationSeconds > 0
+        ? state.restDurationSeconds
+        : (exercise.restSeconds > 0 ? exercise.restSeconds : 30);
 
     return Center(
       child: Container(
@@ -459,47 +766,44 @@ class WorkoutPlayerPage extends StatelessWidget {
               color: AppColors.primary,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Отдых',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            Text(
+              AppLocalizations.of(context).workoutPlayerRest,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            Text(
-              '$remaining сек',
-              style: const TextStyle(
-                fontSize: 20,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                minHeight: 8,
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: AppColors.primary.withValues(alpha: 0.16),
-                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-              ),
+            _WorkoutRestCountdown(
+              restStartedAtEpochMs: state.restStartedAtEpochMs,
+              restDurationSeconds: totalRest,
             ),
             const SizedBox(height: 12),
             Text(
-              'Следующий подход: ${exercise.name}',
+              AppLocalizations.of(
+                context,
+              ).workoutPlayerNextSet(_localizedExerciseName(context, exercise)),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'После таймера тренировка продолжится автоматически',
+            Text(
+              AppLocalizations.of(context).workoutPlayerAutoResume,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => context.read<WorkoutCubit>().finishRest(),
-                child: const Text('Продолжить'),
+                onPressed: () => _runGuardedAction(
+                  context,
+                  actionKey: 'workout_finish_rest',
+                  action: () => context.read<WorkoutCubit>().finishRest(),
+                ),
+                child: Text(
+                  AppLocalizations.of(context).workoutSessionContinue,
+                ),
               ),
             ),
           ],
@@ -508,10 +812,11 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLiveStatsRow(WorkoutInProgress state, WorkoutExercise exercise) {
-    final timeParts = _formatTime(state.elapsedSeconds).split(':');
-    final minutes = timeParts.first;
-    final seconds = timeParts.last;
+  Widget _buildLiveStatsRow(
+    BuildContext context,
+    WorkoutInProgress state,
+    WorkoutExercise exercise,
+  ) {
     final reps = _extractRepCount(exercise);
 
     return Row(
@@ -527,17 +832,7 @@ class WorkoutPlayerPage extends StatelessWidget {
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(child: _buildLiveStatCell(minutes, 'МИНУТЫ')),
-                Container(
-                  width: 1,
-                  height: 42,
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                ),
-                Expanded(child: _buildLiveStatCell(seconds, 'СЕКУНДЫ')),
-              ],
-            ),
+            child: _WorkoutTimerDisplay(formatTime: _formatTime),
           ),
         ),
         const SizedBox(width: 10),
@@ -551,9 +846,9 @@ class WorkoutPlayerPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Column(
               children: [
-                const Text(
-                  'ПОВТОРОВ',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context).workoutPlayerReps.toUpperCase(),
+                  style: const TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
@@ -575,147 +870,151 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLiveStatCell(String value, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
+  Widget _buildAiInsightCard(
+    BuildContext context,
+    WorkoutExercise exercise, {
+    String? sourceLanguageCode,
+  }) {
+    return Container(
+      key: const Key('workout_ai_insight_card'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                size: 14,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                AppLocalizations.of(context).workoutPlayerAiInsight,
+                style: TextStyle(
+                  color: AppColors.textSecondary.withValues(alpha: 0.9),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAiInsightCard(BuildContext context, WorkoutExercise exercise) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _showAiInsightDialog(context, exercise),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome,
-                  size: 14,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'AI INSIGHT',
-                  style: TextStyle(
-                    color: AppColors.textSecondary.withValues(alpha: 0.9),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Заметка врача ИИ',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context).workoutPlayerAiNote,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        exercise.description,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                          height: 1.3,
-                        ),
+                    ),
+                    const SizedBox(height: 6),
+                    _LocalizedAiInsightText(
+                      exercise: exercise,
+                      sourceLanguageCode: sourceLanguageCode,
+                      maxLines: 3,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: TextButton(
-                          onPressed: () =>
-                              _showAiInsightDialog(context, exercise),
-                          style: TextButton.styleFrom(
-                            minimumSize: const Size(0, 34),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextButton(
+                        key: const Key('workout_ai_insight_open_button'),
+                        onPressed: () => _runGuardedAction(
+                          context,
+                          actionKey: 'workout_ai_insight_dialog',
+                          isModalAction: true,
+                          modalType: _WorkoutModalType.aiInsight,
+                          idempotentWhenSameModalOpen: true,
+                          action: () => _showAiInsightDialog(
+                            context,
+                            exercise,
+                            sourceLanguageCode: sourceLanguageCode,
                           ),
-                          child: const Text(
-                            'Понятно',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 34),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context).workoutPlayerGotIt,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                _buildInsightThumbnail(exercise),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 10),
+              _buildInsightThumbnail(exercise),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  void _showAiInsightDialog(BuildContext context, WorkoutExercise exercise) {
-    showDialog(
+  Future<void> _showAiInsightDialog(
+    BuildContext context,
+    WorkoutExercise exercise, {
+    String? sourceLanguageCode,
+  }) async {
+    final exerciseName = _localizedExerciseName(context, exercise);
+    debugPrint(
+      'WorkoutPlayerPage: Requesting AI insight dialog for "$exerciseName"',
+    );
+
+    final dismissReason = await showDialog<String>(
       context: context,
+      barrierDismissible: false,
+      routeSettings: const RouteSettings(
+        name: 'workout_ai_insight_dialog_route',
+      ),
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Заметка врача ИИ'),
+        key: const Key('workout_ai_insight_dialog'),
+        title: Text(AppLocalizations.of(context).workoutPlayerAiNote),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                exercise.name,
+                _localizedExerciseName(context, exercise),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                exercise.description.isEmpty
-                    ? 'Дополнительное описание отсутствует.'
-                    : exercise.description,
+              _LocalizedAiInsightText(
+                exercise: exercise,
+                sourceLanguageCode: sourceLanguageCode,
                 style: const TextStyle(fontSize: 14, height: 1.4),
               ),
             ],
@@ -723,11 +1022,21 @@ class WorkoutPlayerPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Закрыть'),
+            key: const Key('workout_ai_insight_close_button'),
+            onPressed: () {
+              debugPrint(
+                'WorkoutPlayerPage: AI insight dialog close button pressed for "$exerciseName"',
+              );
+              Navigator.of(dialogContext).pop('close_button');
+            },
+            child: Text(AppLocalizations.of(context).workoutPlayerClose),
           ),
         ],
       ),
+    );
+
+    debugPrint(
+      'WorkoutPlayerPage: AI insight dialog dismissed (reason: ${dismissReason ?? 'system_or_route_pop'}) for "$exerciseName"',
     );
   }
 
@@ -783,16 +1092,10 @@ class WorkoutPlayerPage extends StatelessWidget {
   ) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getPainStepTitle(state.step)),
+        title: Text(_getPainStepTitle(context, state.step)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (state.step == PainFlowStep.location) {
-              context.read<WorkoutCubit>().cancelPainReport();
-            } else {
-              context.read<WorkoutCubit>().painFlowBack();
-            }
-          },
+          onPressed: () => _handlePlayerBack(context, state, source: 'appbar'),
         ),
       ),
       body: SafeArea(
@@ -804,14 +1107,14 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  String _getPainStepTitle(PainFlowStep step) {
+  String _getPainStepTitle(BuildContext context, PainFlowStep step) {
     switch (step) {
       case PainFlowStep.location:
-        return 'Где болит?';
+        return AppLocalizations.of(context).painWhereTitle;
       case PainFlowStep.intensity:
-        return 'Насколько больно?';
+        return AppLocalizations.of(context).painIntensityTitle;
       case PainFlowStep.action:
-        return 'Что делаем?';
+        return AppLocalizations.of(context).painActionTitle;
     }
   }
 
@@ -836,15 +1139,17 @@ class WorkoutPlayerPage extends StatelessWidget {
       children: [
         const Icon(Icons.health_and_safety, size: 80, color: AppColors.warning),
         const SizedBox(height: 24),
-        const Text(
-          'Выберите область боли',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).painSelectArea,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          'Текущее упражнение: ${state.currentExercise.name}',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          AppLocalizations.of(context).painCurrentExercise(
+            _localizedExerciseName(context, state.currentExercise),
+          ),
+          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -857,30 +1162,42 @@ class WorkoutPlayerPage extends StatelessWidget {
             children: [
               _buildPainLocationButton(
                 context,
-                'Спина (поясница)',
+                AppLocalizations.of(context).painLocationLowerBack,
                 Icons.airline_seat_flat,
               ),
               _buildPainLocationButton(
                 context,
-                'Спина (верх)',
+                AppLocalizations.of(context).painLocationUpperBack,
                 Icons.accessibility,
               ),
-              _buildPainLocationButton(context, 'Шея', Icons.face),
               _buildPainLocationButton(
                 context,
-                'Колени',
+                AppLocalizations.of(context).painLocationNeck,
+                Icons.face,
+              ),
+              _buildPainLocationButton(
+                context,
+                AppLocalizations.of(context).painLocationKnees,
                 Icons.directions_walk,
               ),
-              _buildPainLocationButton(context, 'Плечи', Icons.fitness_center),
-              _buildPainLocationButton(context, 'Запястья', Icons.pan_tool),
               _buildPainLocationButton(
                 context,
-                'Голеностоп',
+                AppLocalizations.of(context).painLocationShoulders,
+                Icons.fitness_center,
+              ),
+              _buildPainLocationButton(
+                context,
+                AppLocalizations.of(context).painLocationWrists,
+                Icons.pan_tool,
+              ),
+              _buildPainLocationButton(
+                context,
+                AppLocalizations.of(context).painLocationAnkle,
                 Icons.directions_run,
               ),
               _buildPainLocationButton(
                 context,
-                'Таз/бедра',
+                AppLocalizations.of(context).painLocationHips,
                 Icons.airline_seat_legroom_extra,
               ),
             ],
@@ -889,7 +1206,7 @@ class WorkoutPlayerPage extends StatelessWidget {
         const SizedBox(height: 16),
         TextButton(
           onPressed: () => context.read<WorkoutCubit>().cancelPainReport(),
-          child: const Text('Отмена, продолжить упражнение'),
+          child: Text(AppLocalizations.of(context).painCancelContinue),
         ),
       ],
     );
@@ -900,13 +1217,13 @@ class WorkoutPlayerPage extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Область: ${state.painLocation}',
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          AppLocalizations.of(context).painAreaText(state.painLocation!),
+          style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Оцените интенсивность боли',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context).painRateIntensity,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
@@ -917,24 +1234,24 @@ class WorkoutPlayerPage extends StatelessWidget {
                 context,
                 1,
                 '😊',
-                'Лёгкий дискомфорт',
-                'Почти не мешает',
+                AppLocalizations.of(context).painIntensity1,
+                AppLocalizations.of(context).painIntensity1Sub,
                 Colors.green,
               ),
               _buildIntensityOption(
                 context,
                 2,
                 '🙂',
-                'Слабая боль',
-                'Терпимо',
+                AppLocalizations.of(context).painIntensity2,
+                AppLocalizations.of(context).painIntensity2Sub,
                 Colors.green,
               ),
               _buildIntensityOption(
                 context,
                 3,
                 '😐',
-                'Небольшая боль',
-                'Заметно, но можно продолжать',
+                AppLocalizations.of(context).painIntensity3,
+                AppLocalizations.of(context).painIntensity3Sub,
                 Colors.green,
               ),
               const Divider(height: 24),
@@ -942,24 +1259,24 @@ class WorkoutPlayerPage extends StatelessWidget {
                 context,
                 4,
                 '😕',
-                'Умеренная боль',
-                'Мешает концентрации',
+                AppLocalizations.of(context).painIntensity4,
+                AppLocalizations.of(context).painIntensity4Sub,
                 Colors.orange,
               ),
               _buildIntensityOption(
                 context,
                 5,
                 '😟',
-                'Средняя боль',
-                'Нужно изменить технику',
+                AppLocalizations.of(context).painIntensity5,
+                AppLocalizations.of(context).painIntensity5Sub,
                 Colors.orange,
               ),
               _buildIntensityOption(
                 context,
                 6,
                 '😣',
-                'Заметная боль',
-                'Сложно продолжать',
+                AppLocalizations.of(context).painIntensity6,
+                AppLocalizations.of(context).painIntensity6Sub,
                 Colors.orange,
               ),
               const Divider(height: 24),
@@ -967,32 +1284,32 @@ class WorkoutPlayerPage extends StatelessWidget {
                 context,
                 7,
                 '😖',
-                'Сильная боль',
-                'Требуется перерыв',
+                AppLocalizations.of(context).painIntensity7,
+                AppLocalizations.of(context).painIntensity7Sub,
                 Colors.red,
               ),
               _buildIntensityOption(
                 context,
                 8,
                 '😫',
-                'Очень сильная',
-                'Лучше остановиться',
+                AppLocalizations.of(context).painIntensity8,
+                AppLocalizations.of(context).painIntensity8Sub,
                 Colors.red,
               ),
               _buildIntensityOption(
                 context,
                 9,
                 '🤕',
-                'Острая боль',
-                'Нужен отдых',
+                AppLocalizations.of(context).painIntensity9,
+                AppLocalizations.of(context).painIntensity9Sub,
                 Colors.red,
               ),
               _buildIntensityOption(
                 context,
                 10,
                 '🚨',
-                'Невыносимая',
-                'Необходим врач',
+                AppLocalizations.of(context).painIntensity10,
+                AppLocalizations.of(context).painIntensity10Sub,
                 Colors.red.shade900,
               ),
             ],
@@ -1057,16 +1374,16 @@ class WorkoutPlayerPage extends StatelessWidget {
 
     return Column(
       children: [
-        _buildPainSummaryCard(state),
+        _buildPainSummaryCard(context, state),
         const SizedBox(height: 24),
         Text(
-          _getActionTitle(category),
+          _getActionTitle(context, category),
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          _getActionSubtitle(category),
+          _getActionSubtitle(context, category),
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
@@ -1080,7 +1397,10 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPainSummaryCard(WorkoutPainReported state) {
+  Widget _buildPainSummaryCard(
+    BuildContext context,
+    WorkoutPainReported state,
+  ) {
     final color = _getPainColor(state.painCategory);
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1102,11 +1422,15 @@ class WorkoutPlayerPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${state.painLocation}',
+                  AppLocalizations.of(
+                    context,
+                  ).painAreaText(state.painLocation ?? ''),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  'Уровень боли: ${state.painIntensity}/10',
+                  AppLocalizations.of(
+                    context,
+                  ).painLevelText(state.painIntensity ?? 0),
                   style: TextStyle(color: color),
                 ),
               ],
@@ -1130,27 +1454,27 @@ class WorkoutPlayerPage extends StatelessWidget {
     }
   }
 
-  String _getActionTitle(String category) {
+  String _getActionTitle(BuildContext context, String category) {
     switch (category) {
       case 'light':
-        return 'Что вы хотите сделать?';
+        return AppLocalizations.of(context).painActionLightTitle;
       case 'moderate':
-        return 'Рекомендуем осторожность';
+        return AppLocalizations.of(context).painActionModerateTitle;
       case 'severe':
-        return '⚠️ Требуется отдых';
+        return AppLocalizations.of(context).painActionSevereTitle;
       default:
-        return 'Выберите действие';
+        return AppLocalizations.of(context).painActionDefault;
     }
   }
 
-  String _getActionSubtitle(String category) {
+  String _getActionSubtitle(BuildContext context, String category) {
     switch (category) {
       case 'light':
-        return 'Лёгкий дискомфорт — можно продолжить';
+        return AppLocalizations.of(context).painActionLightSubtitle;
       case 'moderate':
-        return 'Рекомендуем заменить упражнение или отдохнуть';
+        return AppLocalizations.of(context).painActionModerateSubtitle;
       case 'severe':
-        return 'При сильной боли лучше прекратить или отдохнуть';
+        return AppLocalizations.of(context).painActionSevereSubtitle;
       default:
         return '';
     }
@@ -1168,25 +1492,28 @@ class WorkoutPlayerPage extends StatelessWidget {
         return [
           _buildActionButton(
             context,
+            actionKey: 'pain_action_continue',
             icon: Icons.play_arrow,
-            title: 'Продолжить упражнение',
-            subtitle: 'Боль терпимая, продолжаю',
+            title: AppLocalizations.of(context).painContinueExercise,
+            subtitle: AppLocalizations.of(context).painContinueSub,
             color: Colors.green,
             onTap: () => cubit.continueAfterPainAssessment(),
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_replace',
             icon: Icons.swap_horiz,
-            title: 'Заменить упражнение',
-            subtitle: 'AI подберёт безопасную альтернативу',
+            title: AppLocalizations.of(context).painReplaceExercise,
+            subtitle: AppLocalizations.of(context).painReplaceSub,
             color: Colors.blue,
             onTap: () => cubit.replaceExerciseAfterPainAssessment(),
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_rest_120',
             icon: Icons.timer,
-            title: 'Перерыв 2 минуты',
-            subtitle: 'Короткий отдых',
+            title: AppLocalizations.of(context).painBreak2min,
+            subtitle: AppLocalizations.of(context).painBreak2minSub,
             color: Colors.orange,
             onTap: () => cubit.takePainRest(120),
           ),
@@ -1195,25 +1522,28 @@ class WorkoutPlayerPage extends StatelessWidget {
         return [
           _buildActionButton(
             context,
+            actionKey: 'pain_action_replace',
             icon: Icons.swap_horiz,
-            title: 'Заменить упражнение',
-            subtitle: 'Рекомендуется при умеренной боли',
+            title: AppLocalizations.of(context).painReplaceExercise,
+            subtitle: AppLocalizations.of(context).painReplaceModSub,
             color: Colors.blue,
             onTap: () => cubit.replaceExerciseAfterPainAssessment(),
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_rest_300',
             icon: Icons.timer,
-            title: 'Перерыв 5 минут',
-            subtitle: 'Отдохните и прислушайтесь к телу',
+            title: AppLocalizations.of(context).painBreak5min,
+            subtitle: AppLocalizations.of(context).painBreak5minSub,
             color: Colors.orange,
             onTap: () => cubit.takePainRest(300),
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_end_workout',
             icon: Icons.stop,
-            title: 'Закончить тренировку',
-            subtitle: 'Сохраним прогресс',
+            title: AppLocalizations.of(context).painEndWorkout,
+            subtitle: AppLocalizations.of(context).painEndWorkoutSaveSub,
             color: Colors.grey,
             onTap: () => cubit.endWorkoutDueToPain(),
           ),
@@ -1234,7 +1564,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'При сильной боли рекомендуем обратиться к врачу',
+                    AppLocalizations.of(context).painSevereWarning,
                     style: TextStyle(color: Colors.red.shade700),
                   ),
                 ),
@@ -1243,17 +1573,19 @@ class WorkoutPlayerPage extends StatelessWidget {
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_rest_600',
             icon: Icons.timer,
-            title: 'Перерыв 10 минут',
-            subtitle: 'Длительный отдых с советами',
+            title: AppLocalizations.of(context).painBreak10min,
+            subtitle: AppLocalizations.of(context).painBreak10minSub,
             color: Colors.orange,
             onTap: () => cubit.takePainRest(600),
           ),
           _buildActionButton(
             context,
+            actionKey: 'pain_action_end_workout',
             icon: Icons.stop,
-            title: 'Закончить тренировку',
-            subtitle: 'Здоровье важнее — отдохните сегодня',
+            title: AppLocalizations.of(context).painEndWorkout,
+            subtitle: AppLocalizations.of(context).painEndWorkoutHealthSub,
             color: Colors.red,
             onTap: () => cubit.endWorkoutDueToPain(),
           ),
@@ -1265,6 +1597,7 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   Widget _buildActionButton(
     BuildContext context, {
+    required String actionKey,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -1281,7 +1614,8 @@ class WorkoutPlayerPage extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle),
         trailing: Icon(Icons.chevron_right, color: color),
-        onTap: onTap,
+        onTap: () =>
+            _runGuardedAction(context, actionKey: actionKey, action: onTap),
       ),
     );
   }
@@ -1308,16 +1642,12 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   // Pain rest view with countdown timer
   Widget _buildPainRestView(BuildContext context, WorkoutPainRest state) {
-    final minutes = state.remainingSeconds ~/ 60;
-    final seconds = state.remainingSeconds % 60;
-    final progress = 1 - (state.remainingSeconds / state.restDurationSeconds);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Перерыв'),
+        title: Text(AppLocalizations.of(context).painRestTitle),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.read<WorkoutCubit>().cancelPainReport(),
+          onPressed: () => _handlePlayerBack(context, state, source: 'appbar'),
         ),
       ),
       body: SafeArea(
@@ -1327,40 +1657,9 @@ class WorkoutPlayerPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Timer display
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 12,
-                      backgroundColor: AppColors.primaryLight.withValues(
-                        alpha: 0.2,
-                      ),
-                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'осталось',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              _WorkoutPainRestCountdown(
+                restStartedAtEpochMs: state.restStartedAtEpochMs,
+                restDurationSeconds: state.restDurationSeconds,
               ),
               const SizedBox(height: 48),
 
@@ -1378,13 +1677,13 @@ class WorkoutPlayerPage extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Советы для отдыха:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Text(
+                      AppLocalizations.of(context).painRestTips,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _getRestTip(state.painIntensity),
+                      _getRestTip(context, state.painIntensity),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
@@ -1400,7 +1699,9 @@ class WorkoutPlayerPage extends StatelessWidget {
                   onPressed: () =>
                       context.read<WorkoutCubit>().finishPainRest(),
                   icon: const Icon(Icons.play_arrow),
-                  label: const Text('Продолжить раньше'),
+                  label: Text(
+                    AppLocalizations.of(context).painRestContinueEarly,
+                  ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -1410,7 +1711,7 @@ class WorkoutPlayerPage extends StatelessWidget {
               TextButton(
                 onPressed: () =>
                     context.read<WorkoutCubit>().endWorkoutDueToPain(),
-                child: const Text('Закончить тренировку'),
+                child: Text(AppLocalizations.of(context).painEndWorkout),
               ),
             ],
           ),
@@ -1419,13 +1720,13 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  String _getRestTip(int painIntensity) {
+  String _getRestTip(BuildContext context, int painIntensity) {
     if (painIntensity <= 3) {
-      return 'Делайте глубокие вдохи и выдохи.\nРасслабьте напряжённые мышцы.';
+      return AppLocalizations.of(context).painRestTipLight;
     } else if (painIntensity <= 6) {
-      return 'Мягко помассируйте область боли.\nПейте воду и дышите спокойно.';
+      return AppLocalizations.of(context).painRestTipModerate;
     } else {
-      return 'Полностью расслабьтесь.\nЕсли боль не проходит, обратитесь к врачу.';
+      return AppLocalizations.of(context).painRestTipSevere;
     }
   }
 
@@ -1434,7 +1735,9 @@ class WorkoutPlayerPage extends StatelessWidget {
     WorkoutExerciseReplacing state,
   ) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Подбор альтернативы')),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).painReplacingTitle),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -1460,20 +1763,25 @@ class WorkoutPlayerPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              const Text(
-                'AI подбирает безопасную замену',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                AppLocalizations.of(context).painReplacingText,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
-                state.message,
+                AppLocalizations.of(context).painReplacingText,
                 style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Область боли: ${state.painLocation}',
+                AppLocalizations.of(
+                  context,
+                ).painReplacingArea(state.painLocation),
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
             ],
@@ -1485,6 +1793,7 @@ class WorkoutPlayerPage extends StatelessWidget {
 
   Widget _buildExerciseImage(BuildContext context, WorkoutExercise exercise) {
     final resolvedVideo = _resolveExerciseVideo(exercise);
+    final displayName = _localizedExerciseName(context, exercise);
     if (resolvedVideo.kind != ExerciseVideoKind.unsupported) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -1493,9 +1802,9 @@ class WorkoutPlayerPage extends StatelessWidget {
           child: ExerciseVideoPlayer(
             resolvedVideo: resolvedVideo,
             onFullscreenTap: () =>
-                _openFullscreenVideo(context, exercise.name, resolvedVideo),
+                _openFullscreenVideo(context, displayName, resolvedVideo),
             onOpenSearchTap: () =>
-                _openSearchVideo(context, exercise.name, resolvedVideo),
+                _openSearchVideo(context, displayName, resolvedVideo),
           ),
         ),
       );
@@ -1530,7 +1839,7 @@ class WorkoutPlayerPage extends StatelessWidget {
             );
           },
           errorBuilder: (context, error, stackTrace) {
-            return _buildPlaceholderImage(exercise);
+            return _buildPlaceholderImage(context, exercise);
           },
         ),
       );
@@ -1539,17 +1848,28 @@ class WorkoutPlayerPage extends StatelessWidget {
     if (exercise.mediaType == ExerciseMediaType.lottie) {
       return _buildMediaPlaceholder(
         icon: Icons.animation,
-        label: 'Анимация',
+        label: AppLocalizations.of(context).workoutPlayerAnimation,
         color: Colors.teal,
       );
     }
 
     // Show categorized placeholder
-    return _buildPlaceholderImage(exercise);
+    return _buildPlaceholderImage(context, exercise);
   }
 
   ResolvedExerciseVideo _resolveExerciseVideo(WorkoutExercise exercise) {
     return ExerciseVideoResolver.resolve(exercise.videoUrl, exercise.mediaType);
+  }
+
+  String _localizedExerciseName(
+    BuildContext context,
+    WorkoutExercise exercise,
+  ) {
+    return ExerciseLocalizationUtils.localizedExerciseName(
+      Localizations.localeOf(context).languageCode,
+      rawName: exercise.name,
+      exerciseId: exercise.exerciseId,
+    );
   }
 
   void _openFullscreenVideo(
@@ -1579,7 +1899,11 @@ class WorkoutPlayerPage extends StatelessWidget {
     final url = resolvedVideo.normalizedUrl;
     if (url == null || url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ссылка поиска видео недоступна')),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).workoutPlayerSearchUnavailable,
+          ),
+        ),
       );
       return;
     }
@@ -1626,7 +1950,10 @@ class WorkoutPlayerPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholderImage(WorkoutExercise exercise) {
+  Widget _buildPlaceholderImage(
+    BuildContext context,
+    WorkoutExercise exercise,
+  ) {
     final icon = _getExerciseIcon(exercise);
     final color = _getExerciseColor(exercise);
 
@@ -1648,7 +1975,7 @@ class WorkoutPlayerPage extends StatelessWidget {
           Icon(icon, size: 64, color: color),
           const SizedBox(height: 8),
           Text(
-            _getExerciseCategory(exercise),
+            _getExerciseCategory(context, exercise),
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w600,
@@ -1661,37 +1988,133 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   Color _getExerciseColor(WorkoutExercise exercise) {
-    final muscles = exercise.targetMuscles.join(' ').toLowerCase();
-    if (muscles.contains('спина') || muscles.contains('back')) {
+    final muscles = _normalizedMuscles(exercise);
+    if (_containsAny(muscles, const [
+      'back',
+      'спин',
+      'арқа',
+      'upper_back',
+      'lower_back',
+    ])) {
       return Colors.blue;
     }
-    if (muscles.contains('ног') || muscles.contains('leg')) return Colors.green;
-    if (muscles.contains('рук') || muscles.contains('arm')) {
+    if (_containsAny(muscles, const [
+      'leg',
+      'ног',
+      'аяқ',
+      'knee',
+      'бедр',
+      'жамбас',
+      'glute',
+    ])) {
+      return Colors.green;
+    }
+    if (_containsAny(muscles, const [
+      'arm',
+      'рук',
+      'қол',
+      'shoulder',
+      'плеч',
+      'bicep',
+      'tricep',
+    ])) {
       return Colors.orange;
     }
-    if (muscles.contains('кор') || muscles.contains('core')) {
+    if (_containsAny(muscles, const ['core', 'кор', 'пресс', 'abs', 'іш'])) {
       return Colors.purple;
     }
     return AppColors.primary;
   }
 
-  String _getExerciseCategory(WorkoutExercise exercise) {
-    final muscles = exercise.targetMuscles.join(' ').toLowerCase();
-    if (muscles.contains('спина') || muscles.contains('back')) return 'Спина';
-    if (muscles.contains('ног') || muscles.contains('leg')) return 'Ноги';
-    if (muscles.contains('рук') || muscles.contains('arm')) return 'Руки';
-    if (muscles.contains('кор') || muscles.contains('core')) return 'Кор';
-    if (muscles.contains('шея') || muscles.contains('neck')) return 'Шея';
-    return 'Общее';
+  String _getExerciseCategory(BuildContext context, WorkoutExercise exercise) {
+    final muscles = _normalizedMuscles(exercise);
+    if (_containsAny(muscles, const [
+      'back',
+      'спин',
+      'арқа',
+      'upper_back',
+      'lower_back',
+    ])) {
+      return AppLocalizations.of(context).categoryBack;
+    }
+    if (_containsAny(muscles, const [
+      'leg',
+      'ног',
+      'аяқ',
+      'knee',
+      'бедр',
+      'жамбас',
+      'glute',
+    ])) {
+      return AppLocalizations.of(context).categoryLegs;
+    }
+    if (_containsAny(muscles, const [
+      'arm',
+      'рук',
+      'қол',
+      'shoulder',
+      'плеч',
+      'bicep',
+      'tricep',
+    ])) {
+      return AppLocalizations.of(context).categoryArms;
+    }
+    if (_containsAny(muscles, const ['core', 'кор', 'пресс', 'abs', 'іш'])) {
+      return AppLocalizations.of(context).categoryCore;
+    }
+    if (_containsAny(muscles, const ['neck', 'шея', 'мойын'])) {
+      return AppLocalizations.of(context).categoryNeck;
+    }
+    return AppLocalizations.of(context).categoryGeneral;
   }
 
   IconData _getExerciseIcon(WorkoutExercise exercise) {
-    if (exercise.targetMuscles.contains('спина')) {
+    final muscles = _normalizedMuscles(exercise);
+    if (_containsAny(muscles, const [
+      'back',
+      'спин',
+      'арқа',
+      'upper_back',
+      'lower_back',
+    ])) {
       return Icons.accessibility_new;
     }
-    if (exercise.targetMuscles.contains('ноги')) return Icons.directions_walk;
-    if (exercise.targetMuscles.contains('руки')) return Icons.fitness_center;
+    if (_containsAny(muscles, const [
+      'leg',
+      'ног',
+      'аяқ',
+      'knee',
+      'бедр',
+      'жамбас',
+      'glute',
+    ])) {
+      return Icons.directions_walk;
+    }
+    if (_containsAny(muscles, const [
+      'arm',
+      'рук',
+      'қол',
+      'shoulder',
+      'плеч',
+      'bicep',
+      'tricep',
+    ])) {
+      return Icons.fitness_center;
+    }
     return Icons.self_improvement;
+  }
+
+  String _normalizedMuscles(WorkoutExercise exercise) {
+    return exercise.targetMuscles.join(' ').toLowerCase();
+  }
+
+  bool _containsAny(String value, List<String> candidates) {
+    for (final candidate in candidates) {
+      if (value.contains(candidate)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   String _formatTime(int seconds) {
@@ -1700,41 +2123,60 @@ class WorkoutPlayerPage extends StatelessWidget {
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
-  void _showExitConfirmation(BuildContext context) {
-    showDialog(
+  Future<void> _showExitConfirmation(BuildContext context) async {
+    final canPop = context.canPop();
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Завершить тренировку?'),
-        content: const Text('Прогресс не будет сохранён'),
+        key: const Key('workout_exit_confirmation_dialog'),
+        title: Text(AppLocalizations.of(context).workoutPlayerExitTitle),
+        content: Text(AppLocalizations.of(context).workoutPlayerExitMessage),
         actions: [
           TextButton(
+            key: const Key('workout_exit_cancel_button'),
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
+            child: Text(AppLocalizations.of(context).workoutPlayerExitCancel),
           ),
           ElevatedButton(
+            key: const Key('workout_exit_confirm_button'),
             onPressed: () {
               Navigator.of(dialogContext).pop();
               context.read<WorkoutCubit>().cancelWorkout();
-              context.go(AppRoutes.home);
+              if (canPop) {
+                context.pop();
+                return;
+              }
+              context.goToTabBranch(AppTabBranch.home);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Завершить'),
+            child: Text(AppLocalizations.of(context).workoutPlayerExitConfirm),
           ),
         ],
       ),
     );
   }
 
-  void _showCompletionDialog(
+  Future<void> _showCompletionDialog(
     BuildContext context,
     WorkoutCompleted initialState,
-  ) {
+  ) async {
     final workoutCubit = context.read<WorkoutCubit>();
     final minutes = initialState.totalDurationSeconds ~/ 60;
+    final canPop = context.canPop();
+    final l10n = AppLocalizations.of(context);
+    final localizedWorkoutTitle =
+        WorkoutLocalizationUtils.localizedWorkoutTitle(
+          l10n: l10n,
+          localeCode: Localizations.localeOf(context).languageCode,
+          type: initialState.workout.type,
+          rawTitle: initialState.workout.title,
+          sourceLanguageCode:
+              initialState.workout.aiMetadata?['language_code'] as String?,
+        );
     var showAllTips = false;
     var showAllRecoverySteps = false;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => BlocProvider.value(
@@ -1759,11 +2201,11 @@ class WorkoutPlayerPage extends StatelessWidget {
                   horizontal: isCompact ? 16 : 24,
                   vertical: isCompact ? 14 : 24,
                 ),
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.celebration, color: AppColors.success),
-                    SizedBox(width: 8),
-                    Text('Отличная работа!'),
+                    const Icon(Icons.celebration, color: AppColors.success),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.of(context).completionTitle),
                   ],
                 ),
                 content: ConstrainedBox(
@@ -1784,7 +2226,7 @@ class WorkoutPlayerPage extends StatelessWidget {
                           ),
                           SizedBox(height: isCompact ? 12 : 16),
                           Text(
-                            initialState.workout.title,
+                            localizedWorkoutTitle,
                             style: TextStyle(
                               fontSize: isCompact ? 16 : 18,
                               fontWeight: FontWeight.bold,
@@ -1801,12 +2243,18 @@ class WorkoutPlayerPage extends StatelessWidget {
                             children: [
                               _buildStatChip(
                                 Icons.timer,
-                                '$minutes мин',
+                                AppLocalizations.of(
+                                  context,
+                                ).completionMinutes(minutes),
                                 compact: isCompact,
                               ),
                               _buildStatChip(
                                 Icons.fitness_center,
-                                '${initialState.workout.totalExercises} упр.',
+                                AppLocalizations.of(
+                                  context,
+                                ).completionExercises(
+                                  initialState.workout.totalExercises,
+                                ),
                                 compact: isCompact,
                               ),
                             ],
@@ -1832,7 +2280,11 @@ class WorkoutPlayerPage extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Жалоб на боль: ${initialState.painReportsCount}',
+                                    AppLocalizations.of(
+                                      context,
+                                    ).completionPainReports(
+                                      initialState.painReportsCount,
+                                    ),
                                     style: const TextStyle(
                                       color: AppColors.warning,
                                       fontWeight: FontWeight.bold,
@@ -1852,7 +2304,9 @@ class WorkoutPlayerPage extends StatelessWidget {
                                 const CircularProgressIndicator(),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'AI анализирует вашу тренировку...',
+                                  AppLocalizations.of(
+                                    context,
+                                  ).completionAnalyzing,
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontStyle: FontStyle.italic,
@@ -1907,7 +2361,11 @@ class WorkoutPlayerPage extends StatelessWidget {
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
-                                              'Советы (${feedback.tips.length})',
+                                              AppLocalizations.of(
+                                                context,
+                                              ).completionTips(
+                                                feedback.tips.length,
+                                              ),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -1968,8 +2426,12 @@ class WorkoutPlayerPage extends StatelessWidget {
                                               },
                                               child: Text(
                                                 showAllTips
-                                                    ? 'Свернуть'
-                                                    : 'Показать все',
+                                                    ? AppLocalizations.of(
+                                                        context,
+                                                      ).completionCollapse
+                                                    : AppLocalizations.of(
+                                                        context,
+                                                      ).completionShowAll,
                                               ),
                                             ),
                                           ),
@@ -2040,20 +2502,27 @@ class WorkoutPlayerPage extends StatelessWidget {
                                           Icons.restore,
                                           color: Colors.indigo,
                                         ),
-                                        title: const Text(
-                                          'План восстановления',
-                                          style: TextStyle(
+                                        title: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).completionRecoveryPlan,
+                                          style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                         subtitle: Text(
                                           isCompact
-                                              ? 'Кратко, без перегруза'
-                                              : 'Откройте, чтобы посмотреть шаги',
+                                              ? AppLocalizations.of(
+                                                  context,
+                                                ).completionRecoveryBrief
+                                              : AppLocalizations.of(
+                                                  context,
+                                                ).completionRecoveryExpand,
                                           style: const TextStyle(fontSize: 12),
                                         ),
                                         children: [
                                           _buildRecoveryPlanSection(
+                                            context,
                                             feedback.recoveryPlan!,
                                             compact: isCompact,
                                             showAllSteps: showAllRecoverySteps,
@@ -2083,9 +2552,15 @@ class WorkoutPlayerPage extends StatelessWidget {
                       onPressed: () {
                         Navigator.of(dialogContext).pop();
                         workoutCubit.reset();
-                        context.go(AppRoutes.home);
+                        if (canPop) {
+                          context.pop();
+                          return;
+                        }
+                        context.goToTabBranch(AppTabBranch.home);
                       },
-                      child: const Text('На главную'),
+                      child: Text(
+                        AppLocalizations.of(context).completionGoHome,
+                      ),
                     ),
                   ),
                 ],
@@ -2098,6 +2573,7 @@ class WorkoutPlayerPage extends StatelessWidget {
   }
 
   Widget _buildRecoveryPlanSection(
+    BuildContext context,
     RecoveryPlan plan, {
     bool compact = false,
     bool showAllSteps = false,
@@ -2123,7 +2599,9 @@ class WorkoutPlayerPage extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Отдых: ${plan.restDuration}',
+                  AppLocalizations.of(
+                    context,
+                  ).completionRestDuration(plan.restDuration),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.indigo,
@@ -2147,8 +2625,10 @@ class WorkoutPlayerPage extends StatelessWidget {
               onPressed: onToggleSteps,
               child: Text(
                 showAllSteps
-                    ? 'Скрыть шаги'
-                    : 'Ещё шаги (${plan.steps.length - 3})',
+                    ? AppLocalizations.of(context).completionHideSteps
+                    : AppLocalizations.of(
+                        context,
+                      ).completionMoreSteps(plan.steps.length - 3),
               ),
             ),
           ),
@@ -2156,7 +2636,7 @@ class WorkoutPlayerPage extends StatelessWidget {
         const SizedBox(height: 8),
         _buildRecoveryTipCard(
           icon: '\uD83E\uDD57',
-          title: 'Питание',
+          title: AppLocalizations.of(context).completionNutrition,
           description: plan.nutritionTip,
           color: Colors.green,
           compact: compact,
@@ -2165,7 +2645,7 @@ class WorkoutPlayerPage extends StatelessWidget {
         const SizedBox(height: 8),
         _buildRecoveryTipCard(
           icon: '\uD83D\uDE34',
-          title: 'Сон',
+          title: AppLocalizations.of(context).completionSleep,
           description: plan.sleepTip,
           color: Colors.deepPurple,
           compact: compact,
@@ -2305,6 +2785,469 @@ class WorkoutPlayerPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+enum _WorkoutModalType { aiInsight, exit, completion }
+
+class _WorkoutRestCountdown extends StatefulWidget {
+  const _WorkoutRestCountdown({
+    required this.restStartedAtEpochMs,
+    required this.restDurationSeconds,
+  });
+
+  final int restStartedAtEpochMs;
+  final int restDurationSeconds;
+
+  @override
+  State<_WorkoutRestCountdown> createState() => _WorkoutRestCountdownState();
+}
+
+class _WorkoutRestCountdownState extends State<_WorkoutRestCountdown> {
+  Timer? _ticker;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingSeconds = _computeRemaining();
+    _startTicker();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WorkoutRestCountdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.restStartedAtEpochMs != widget.restStartedAtEpochMs ||
+        oldWidget.restDurationSeconds != widget.restDurationSeconds) {
+      _remainingSeconds = _computeRemaining();
+      _startTicker();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final nextRemaining = _computeRemaining();
+      if (nextRemaining != _remainingSeconds) {
+        setState(() => _remainingSeconds = nextRemaining);
+      }
+      if (nextRemaining <= 0) {
+        _ticker?.cancel();
+      }
+    });
+  }
+
+  int _computeRemaining() {
+    final duration = widget.restDurationSeconds;
+    if (duration <= 0) return 0;
+
+    final startedAt = widget.restStartedAtEpochMs;
+    if (startedAt <= 0) return duration;
+
+    final elapsed = (DateTime.now().millisecondsSinceEpoch - startedAt) ~/ 1000;
+    final clampedElapsed = elapsed.clamp(0, duration);
+    return (duration - clampedElapsed).clamp(0, duration);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = widget.restDurationSeconds > 0
+        ? widget.restDurationSeconds
+        : 1;
+    final progress = 1 - (_remainingSeconds / duration);
+
+    return Column(
+      children: [
+        Text(
+          AppLocalizations.of(
+            context,
+          ).workoutPlayerRestSeconds(_remainingSeconds),
+          style: const TextStyle(
+            fontSize: 20,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            minHeight: 8,
+            value: progress.clamp(0.0, 1.0),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.16),
+            valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WorkoutPainRestCountdown extends StatefulWidget {
+  const _WorkoutPainRestCountdown({
+    required this.restStartedAtEpochMs,
+    required this.restDurationSeconds,
+  });
+
+  final int restStartedAtEpochMs;
+  final int restDurationSeconds;
+
+  @override
+  State<_WorkoutPainRestCountdown> createState() =>
+      _WorkoutPainRestCountdownState();
+}
+
+class _WorkoutPainRestCountdownState extends State<_WorkoutPainRestCountdown> {
+  Timer? _ticker;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingSeconds = _computeRemaining();
+    _startTicker();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WorkoutPainRestCountdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.restStartedAtEpochMs != widget.restStartedAtEpochMs ||
+        oldWidget.restDurationSeconds != widget.restDurationSeconds) {
+      _remainingSeconds = _computeRemaining();
+      _startTicker();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final nextRemaining = _computeRemaining();
+      if (nextRemaining != _remainingSeconds) {
+        setState(() => _remainingSeconds = nextRemaining);
+      }
+      if (nextRemaining <= 0) {
+        _ticker?.cancel();
+      }
+    });
+  }
+
+  int _computeRemaining() {
+    final duration = widget.restDurationSeconds;
+    if (duration <= 0) return 0;
+
+    final startedAt = widget.restStartedAtEpochMs;
+    if (startedAt <= 0) return duration;
+
+    final elapsed = (DateTime.now().millisecondsSinceEpoch - startedAt) ~/ 1000;
+    final clampedElapsed = elapsed.clamp(0, duration);
+    return (duration - clampedElapsed).clamp(0, duration);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.restDurationSeconds > 0
+        ? widget.restDurationSeconds
+        : 1;
+    final progress = 1 - (_remainingSeconds / total);
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 200,
+          height: 200,
+          child: CircularProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            strokeWidth: 12,
+            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+            valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+          ),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              AppLocalizations.of(context).painRestRemaining,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LocalizedAiInsightText extends StatefulWidget {
+  const _LocalizedAiInsightText({
+    required this.exercise,
+    this.sourceLanguageCode,
+    this.maxLines,
+    this.style,
+  });
+
+  final WorkoutExercise exercise;
+  final String? sourceLanguageCode;
+  final int? maxLines;
+  final TextStyle? style;
+
+  @override
+  State<_LocalizedAiInsightText> createState() =>
+      _LocalizedAiInsightTextState();
+}
+
+class _LocalizedAiInsightTextState extends State<_LocalizedAiInsightText> {
+  static final Map<String, String> _localizedCache = <String, String>{};
+
+  String? _localizedText;
+  bool _isLoading = false;
+  String _activeRequestKey = '';
+  String _lastLocaleCode = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Localizations lookup must not happen in initState.
+    // Initial resolve is triggered in didChangeDependencies.
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final localeCode = Localizations.localeOf(context).languageCode;
+    if (localeCode != _lastLocaleCode) {
+      _lastLocaleCode = localeCode;
+      unawaited(_resolveLocalizedText());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _LocalizedAiInsightText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exercise.description != widget.exercise.description ||
+        oldWidget.exercise.name != widget.exercise.name ||
+        oldWidget.exercise.exerciseId != widget.exercise.exerciseId ||
+        oldWidget.sourceLanguageCode != widget.sourceLanguageCode) {
+      unawaited(_resolveLocalizedText());
+    }
+  }
+
+  Future<void> _resolveLocalizedText() async {
+    final rawDescription = widget.exercise.description.trim();
+    if (rawDescription.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _localizedText = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final shouldLocalize = AiTextLocalizationUtils.shouldRequestLocalization(
+      text: rawDescription,
+      currentLocaleCode: localeCode,
+      sourceLanguageCode: widget.sourceLanguageCode,
+    );
+
+    if (!shouldLocalize) {
+      if (!mounted) return;
+      setState(() {
+        _localizedText = rawDescription;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final requestKey =
+        '${AiTextLocalizationUtils.normalizeLanguageCode(localeCode)}|${widget.exercise.exerciseId ?? widget.exercise.name}|${rawDescription.hashCode}';
+
+    final cached = _localizedCache[requestKey];
+    if (cached != null && cached.trim().isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _localizedText = cached;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _activeRequestKey = requestKey;
+      _isLoading = true;
+      _localizedText = null;
+    });
+
+    try {
+      final localized = await context.read<WorkoutCubit>().explainExercise(
+        widget.exercise.name,
+        rawDescription,
+        languageCode: localeCode,
+      );
+
+      if (!mounted || _activeRequestKey != requestKey) return;
+      final normalized = localized.trim();
+      if (normalized.isNotEmpty) {
+        _localizedCache[requestKey] = normalized;
+      }
+
+      setState(() {
+        _localizedText = normalized.isEmpty ? null : normalized;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || _activeRequestKey != requestKey) return;
+      setState(() {
+        _localizedText = null;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final rawDescription = widget.exercise.description.trim();
+
+    String visibleText;
+    if (rawDescription.isEmpty) {
+      visibleText = l10n.workoutPlayerNoDescription;
+    } else if (_isLoading) {
+      visibleText = l10n.workoutPlayerAiLocalizedPending;
+    } else {
+      final localeCode = Localizations.localeOf(context).languageCode;
+      final mismatch = AiTextLocalizationUtils.shouldRequestLocalization(
+        text: rawDescription,
+        currentLocaleCode: localeCode,
+        sourceLanguageCode: widget.sourceLanguageCode,
+      );
+
+      if (mismatch) {
+        visibleText =
+            _localizedText ?? l10n.workoutPlayerAiLocalizedUnavailable;
+      } else {
+        visibleText = _localizedText ?? rawDescription;
+      }
+    }
+
+    return Text(
+      visibleText,
+      maxLines: widget.maxLines,
+      overflow: widget.maxLines != null ? TextOverflow.ellipsis : null,
+      style: widget.style,
+    );
+  }
+}
+
+/// A self-contained timer display widget that updates every second
+/// using its own [dart:async] [Timer], without touching the bloc stream.
+///
+/// This widget only rebuilds itself (via [setState]) — the rest of the
+/// [WorkoutPlayerPage] is completely unaffected by timer ticks.
+class _WorkoutTimerDisplay extends StatefulWidget {
+  const _WorkoutTimerDisplay({required this.formatTime});
+
+  final String Function(int seconds) formatTime;
+
+  @override
+  State<_WorkoutTimerDisplay> createState() => _WorkoutTimerDisplayState();
+}
+
+class _WorkoutTimerDisplayState extends State<_WorkoutTimerDisplay> {
+  Timer? _localTimer;
+  int _displayedSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sync initial value from cubit
+    final cubit = context.read<WorkoutCubit>();
+    _displayedSeconds = cubit.getElapsedSeconds();
+    // Update only this widget every second
+    _localTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final elapsed = context.read<WorkoutCubit>().getElapsedSeconds();
+      if (mounted && elapsed != _displayedSeconds) {
+        setState(() => _displayedSeconds = elapsed);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _localTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = widget.formatTime(_displayedSeconds).split(':');
+    final minutes = parts.first;
+    final seconds = parts.last;
+    return Row(
+      children: [
+        Expanded(
+          child: _buildCell(
+            minutes,
+            AppLocalizations.of(context).workoutPlayerMinutes.toUpperCase(),
+          ),
+        ),
+        Container(
+          width: 1,
+          height: 42,
+          color: AppColors.primary.withValues(alpha: 0.2),
+        ),
+        Expanded(
+          child: _buildCell(
+            seconds,
+            AppLocalizations.of(context).workoutPlayerSeconds.toUpperCase(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCell(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+        ),
+      ],
     );
   }
 }
